@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/db';
 import { CATEGORIES, categoryLabel } from '../../lib/constants';
-import { getCurrentProfileId, getCurrentProfileName, setCurrentProfile, fetchProfiles, createProfileRemote, trySyncPendingProfile } from '../../lib/profile';
+import { getCurrentProfileId, getCurrentProfileName, fetchProfiles, trySyncPendingProfile } from '../../lib/profile';
 import { getStoredTheme, setStoredTheme } from '../../lib/theme';
 
 const MODELS = [
@@ -15,8 +15,6 @@ export default function ProfilPage() {
   const [profileId, setProfileId] = useState(null);
   const [profileName, setProfileName] = useState('');
   const [profiles, setProfiles] = useState([]);
-  const [newProfileName, setNewProfileName] = useState('');
-  const [creating, setCreating] = useState(false);
 
   const [itemCount, setItemCount] = useState(0);
   const [outfitCount, setOutfitCount] = useState(0);
@@ -56,26 +54,6 @@ export default function ProfilPage() {
       const list = await fetchProfiles();
       setProfiles(list);
     } catch (e) {}
-  }
-
-  function switchProfile(p) {
-    setCurrentProfile(p.id, p.name);
-    setProfileId(p.id);
-    setProfileName(p.name);
-  }
-
-  async function addProfile() {
-    const trimmed = newProfileName.trim();
-    if (!trimmed) return;
-    setCreating(true);
-    try {
-      const p = await createProfileRemote(trimmed);
-      setProfiles((prev) => [...prev, p]);
-      switchProfile(p);
-      setNewProfileName('');
-    } catch (e) {} finally {
-      setCreating(false);
-    }
   }
 
   function toggleDark() {
@@ -139,24 +117,6 @@ export default function ProfilPage() {
           </div>
         ))}
         {Object.keys(categoryCounts).length === 0 && <p className="card-sub">Noch keine Teile im Schrank.</p>}
-      </div>
-
-      <div className="section">
-        <div className="section-title">Profil wechseln</div>
-        <div className="profile-switch-list">
-          {profiles.map((p) => (
-            <div key={p.id} className={'profile-chip' + (p.id === profileId ? ' active' : '')} onClick={() => switchProfile(p)}>
-              <span className="friend-avatar" style={{ background: p.avatar_color, width: 20, height: 20, fontSize: 11 }}>{p.avatar_emoji}</span>
-              {p.name}
-            </div>
-          ))}
-        </div>
-        <div className="row">
-          <input type="text" placeholder="Neuer Profilname" value={newProfileName} onChange={(e) => setNewProfileName(e.target.value)} />
-          <button className="btn" onClick={addProfile} disabled={!newProfileName.trim() || creating}>
-            {creating ? '...' : '+ Neues Profil'}
-          </button>
-        </div>
       </div>
 
       <div className="section">

@@ -6,6 +6,7 @@ import { getDominantColor, classifyColor, hexToRgb } from '../../lib/color';
 import { analyzeItemImage } from '../../lib/ai';
 import { CATEGORIES, FIT_OPTIONS, PATTERN_OPTIONS, SEASON_OPTIONS, COLOR_SWATCHES, categoryLabel, categoryIcon } from '../../lib/constants';
 import { db } from '../../lib/db';
+import { IconCamera, IconCheck } from '../../components/Icons';
 
 function emptyDraft() {
   return {
@@ -25,13 +26,12 @@ function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 export default function AddItemPage() {
   const router = useRouter();
-  const [phase, setPhase] = useState('form'); // form -> analyzing -> confirm
+  const [phase, setPhase] = useState('form'); // form -> analyzing -> confirm -> saved
   const [dataUrl, setDataUrl] = useState(null);
   const [draft, setDraft] = useState(emptyDraft());
   const [checks, setChecks] = useState({});
   const [aiError, setAiError] = useState('');
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [savedFlash, setSavedFlash] = useState(false);
 
   function updateDraft(patch) { setDraft((d) => ({ ...d, ...patch })); }
   function toggleSeason(s) {
@@ -117,12 +117,12 @@ export default function AddItemPage() {
       createdAt: Date.now(),
     };
     await db.addItem(item);
-    setSavedFlash(true);
-    setTimeout(() => router.push('/'), 500);
+    setPhase('saved');
+    setTimeout(() => router.push('/'), 1300);
   }
 
   function addAnother() {
-    setPhase('form'); setDataUrl(null); setDraft(emptyDraft()); setAiError(''); setSavedFlash(false); setChecks({});
+    setPhase('form'); setDataUrl(null); setDraft(emptyDraft()); setAiError(''); setChecks({});
   }
 
   return (
@@ -149,7 +149,7 @@ export default function AddItemPage() {
             <label className="upload-box">
               <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
                 onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
-              <span className="upload-icon">📷</span>
+              <span className="upload-icon"><IconCamera size={28} /></span>
               Foto aufnehmen oder hochladen
             </label>
           )}
@@ -271,10 +271,17 @@ export default function AddItemPage() {
 
           <div className="row">
             <button className="btn" onClick={addAnother}>Abbrechen</button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={savedFlash}>
-              {savedFlash ? 'Gespeichert ✓' : 'Speichern'}
-            </button>
+            <button className="btn btn-primary" onClick={handleSave}>Speichern</button>
           </div>
+        </div>
+      )}
+
+      {phase === 'saved' && (
+        <div className="success-overlay">
+          <div className="success-badge">
+            <IconCheck size={56} />
+          </div>
+          <p className="success-text">Gespeichert!</p>
         </div>
       )}
     </div>

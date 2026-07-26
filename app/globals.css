@@ -121,6 +121,7 @@ b, strong { font-weight: 700; }
 
 /* ---------- Pills / chips ---------- */
 .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.filter-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
 .pill {
   padding: 9px 15px; border-radius: 999px; font-size: 13px; font-weight: 500;
   border: 1px solid var(--border); background: var(--card); color: var(--ink);
@@ -314,6 +315,22 @@ b, strong { font-weight: 700; }
   opacity: .12; filter: blur(4px); pointer-events: none; z-index: 0;
 }
 .onboarding-footer { text-align: center; font-size: 11px; color: var(--muted); padding-top: 14px; }
+
+/* ---------- Erfolgs-Overlay (animierter gruener Haken) ---------- */
+.success-overlay {
+  position: fixed; inset: 0; background: var(--bg); z-index: 200;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; animation: fadeIn .25s ease;
+}
+.success-badge {
+  width: 96px; height: 96px; border-radius: 50%; background: #e7f8ec; color: var(--success);
+  display: flex; align-items: center; justify-content: center; animation: scaleIn .35s ease both;
+}
+[data-theme='dark'] .success-badge { background: #10331d; }
+.success-text { font-weight: 700; font-size: 16px; }
+.check-circle-ring { stroke-dasharray: 1; stroke-dashoffset: 1; animation: drawPath .5s ease forwards; }
+.check-circle-tick { stroke-dasharray: 1; stroke-dashoffset: 1; animation: drawPath .4s .45s ease forwards; }
+@keyframes drawPath { to { stroke-dashoffset: 0; } }
 
 /* ---------- Avatar / profile ---------- */
 .avatar-circle {

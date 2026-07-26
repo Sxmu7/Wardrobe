@@ -6,6 +6,7 @@ import { categoryLabel, SEASON_OPTIONS } from '../../lib/constants';
 import { generateOutfit, slotRole } from '../../lib/outfitEngine';
 import { compositeOutfitImage } from '../../lib/share';
 import { getCurrentProfileId, trySyncPendingProfile } from '../../lib/profile';
+import { IconShare, IconCalendar, IconFilter } from '../../components/Icons';
 
 export default function OutfitsPage() {
   const [items, setItems] = useState([]);
@@ -158,6 +159,7 @@ export default function OutfitsPage() {
         ))}
       </div>
 
+      <div className="filter-label"><IconFilter size={14} /> Saison</div>
       <div className="pill-row">
         <button type="button" className={'pill' + (season === 'alle' ? ' active' : '')} onClick={() => setSeason('alle')}>Alle</button>
         {SEASON_OPTIONS.map((s) => (
@@ -215,9 +217,12 @@ export default function OutfitsPage() {
             <button className="btn btn-primary" onClick={saveOutfit}>Outfit speichern</button>
           </div>
           <div className="row" style={{ marginTop: 10 }}>
-            <button className="btn" onClick={markWornToday}>{wornFlash ? '✓ Notiert' : '👕 Heute getragen'}</button>
-            <button className="btn btn-primary" onClick={shareWithFriends} disabled={sharing}>
-              {sharing ? 'Teilt...' : '📤 Mit Freunden teilen'}
+            <button className="btn" onClick={markWornToday} style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+              <IconCalendar size={15} /> {wornFlash ? 'Notiert ✓' : 'Heute getragen'}
+            </button>
+            <button className="btn btn-primary" onClick={shareWithFriends} disabled={sharing}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+              <IconShare size={15} /> {sharing ? 'Teilt...' : 'Mit Freunden teilen'}
             </button>
           </div>
           {shareMsg && <p className="card-sub" style={{ textAlign: 'center', marginTop: 8 }}>{shareMsg}</p>}

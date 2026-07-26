@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { CATEGORIES, FIT_OPTIONS, PATTERN_OPTIONS, SEASON_OPTIONS, COLOR_SWATCHES, categoryLabel, categoryIcon } from '../lib/constants';
+import { IconEdit } from './Icons';
 
 export default function ItemDetail({ item, onClose, onSave, onDelete }) {
   const [draft, setDraft] = useState({ ...item });
@@ -55,7 +56,9 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
             </div>
 
             <div className="row">
-              <button className="btn" onClick={() => setEditing(true)}>Bearbeiten</button>
+              <button className="btn" onClick={() => setEditing(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <IconEdit size={15} /> Bearbeiten
+              </button>
               <button className="btn btn-danger" onClick={() => onDelete(item.id)}>Loeschen</button>
               <button className="btn" onClick={onClose}>Schliessen</button>
             </div>

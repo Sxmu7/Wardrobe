@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { IconPerson } from './Icons';
 
 const LEFT = [
   { href: '/', icon: '🧺', label: 'Schrank' },
@@ -8,7 +9,7 @@ const LEFT = [
 ];
 const RIGHT = [
   { href: '/gallery', icon: '🖼️', label: 'Community' },
-  { href: '/profil', icon: '👤', label: 'Profil' },
+  { href: '/profil', icon: <IconPerson size={20} />, label: 'Profil' },
 ];
 
 export default function BottomNav() {
