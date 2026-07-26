@@ -9,6 +9,8 @@ const EXPLAIN_STEPS = [
   { emoji: '🖼️', titleKey: 'step3Title', bodyKey: 'step3Body' },
 ];
 
+const FLAGS = { de: '🇩🇪', en: '🇬🇧', es: '🇪🇸' };
+
 export default function Onboarding({ onComplete }) {
   const [lang, setLang] = useState(null);
   const [name, setName] = useState('');
@@ -43,18 +45,22 @@ export default function Onboarding({ onComplete }) {
   if (!lang) {
     return (
       <div className="onboarding">
+        <div className="onboarding-glow" />
         <div className="onboarding-notch" />
+        <div className="onboarding-brand">MyClo</div>
         <div className="onboarding-body">
-          <div className="onboarding-emoji">🌍</div>
+          <div className="onboarding-icon-badge">🌍</div>
           <h1 className="onboarding-title">Sprache / Language / Idioma</h1>
+          <p className="onboarding-text">Wähle deine Sprache, um MyClo einzurichten.</p>
           <div className="lang-list">
             {LANGUAGES.map((l) => (
               <button key={l.code} className="btn-mono" onClick={() => setLang(l.code)}>
-                {l.label}
+                <span>{FLAGS[l.code]}</span>{l.label}
               </button>
             ))}
           </div>
         </div>
+        <div className="onboarding-footer">designed and developed by SXMU</div>
       </div>
     );
   }
@@ -65,6 +71,7 @@ export default function Onboarding({ onComplete }) {
   if (step === 0) {
     return (
       <div className="onboarding">
+        <div className="onboarding-glow" />
         <div className="onboarding-notch" />
         <div className="progress-track"><div className="progress-fill" style={{ width: progressPct + '%' }} /></div>
         <div className="step-dots">
@@ -73,7 +80,7 @@ export default function Onboarding({ onComplete }) {
           ))}
         </div>
         <div className="onboarding-body">
-          <div className="onboarding-emoji">👋</div>
+          <div className="onboarding-icon-badge">👋</div>
           <h1 className="onboarding-title">{t(lang, 'askName')}</h1>
           <p className="onboarding-text">{t(lang, 'nameHint')}</p>
           <div className="field">
@@ -93,6 +100,7 @@ export default function Onboarding({ onComplete }) {
             {saving ? '...' : t(lang, 'continue')}
           </button>
         </div>
+        <div className="onboarding-footer">MyClo · designed and developed by SXMU</div>
       </div>
     );
   }
@@ -102,6 +110,7 @@ export default function Onboarding({ onComplete }) {
 
   return (
     <div className="onboarding">
+      <div className="onboarding-glow" />
       <div className="onboarding-notch" />
       <div className="progress-track"><div className="progress-fill" style={{ width: progressPct + '%' }} /></div>
       <div className="step-dots">
@@ -109,8 +118,8 @@ export default function Onboarding({ onComplete }) {
           <span key={i} className={'step-dot' + (i === step ? ' active' : '')} />
         ))}
       </div>
-      <div className="onboarding-body">
-        <div className="onboarding-emoji">{explain.emoji}</div>
+      <div className="onboarding-body" key={step}>
+        <div className="onboarding-icon-badge">{explain.emoji}</div>
         <h1 className="onboarding-title">{t(lang, explain.titleKey)}</h1>
         <p className="onboarding-text">{t(lang, explain.bodyKey)}</p>
       </div>
@@ -124,6 +133,7 @@ export default function Onboarding({ onComplete }) {
           <button className="btn-mono-outline" onClick={finish}>{t(lang, 'skip')}</button>
         )}
       </div>
+      <div className="onboarding-footer">MyClo · designed and developed by SXMU</div>
     </div>
   );
 }
