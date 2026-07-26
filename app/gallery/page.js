@@ -3,6 +3,12 @@ import { useEffect, useState } from 'react';
 import { fileToResizedDataUrl } from '../../lib/image';
 import { getCurrentProfileId, trySyncPendingProfile } from '../../lib/profile';
 
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+}
+
 export default function GalleryPage() {
   const [profileId, setProfileId] = useState(null);
   const [photos, setPhotos] = useState([]);
@@ -98,8 +104,8 @@ export default function GalleryPage() {
   return (
     <div>
       <div className="page-header">
-        <h1>Outfits</h1>
-        <p>Geteilte Outfit-Fotos von dir und deinen Freunden.</p>
+        <h1>Community</h1>
+        <p>Geteilte Outfits von dir und deinen Freunden.</p>
       </div>
 
       {error && <div className="banner">{error}</div>}
@@ -109,12 +115,12 @@ export default function GalleryPage() {
           <input type="file" accept="image/*" style={{ display: 'none' }}
             onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
           <span className="upload-icon">📸</span>
-          + Foto-Outfit speichern
+          + Foto-Outfit teilen
         </label>
       ) : (
         <div className="modal-overlay">
           <div className="modal">
-            <h2>Outfit-Foto speichern</h2>
+            <h2>Outfit-Foto teilen</h2>
             <img className="preview-img" src={pendingImage} alt="Outfit" />
             <div className="field">
               <label>Notiz</label>
@@ -122,35 +128,37 @@ export default function GalleryPage() {
             </div>
             <div className="row">
               <button className="btn" onClick={() => { setPendingImage(null); setNote(''); }}>Abbrechen</button>
-              <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Speichert...' : 'Speichern'}</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Speichert...' : 'Teilen'}</button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="section-label">Von Freunden</div>
       {loading ? (
         <p className="card-sub">Lade...</p>
       ) : photos.length === 0 ? (
-        <div className="empty">Noch keine Outfit-Fotos gespeichert.</div>
+        <div className="empty">Noch keine Outfit-Fotos geteilt.</div>
       ) : (
-        <div className="grid-2">
+        <div>
           {photos.map((p) => (
-            <div key={p.id} className="card" style={{ cursor: 'default' }}>
-              <img src={p.image} alt="Outfit" />
-              <div className="card-body">
-                <div className="friend-head">
-                  <span className="friend-avatar" style={{ background: p.avatar_color }}>{p.avatar_emoji}</span>
-                  <span className="friend-name">{p.profile_name}</span>
+            <div key={p.id} className="feed-card">
+              <div className="feed-head">
+                <span className="friend-avatar" style={{ background: p.avatar_color }}>{p.avatar_emoji}</span>
+                <div>
+                  <div className="feed-head-name">{p.profile_name}</div>
+                  <div className="feed-head-date">{formatDate(p.created_at)}</div>
                 </div>
-                {p.note && <p className="card-sub" style={{ marginBottom: 6 }}>{p.note}</p>}
+              </div>
+              <img className="feed-img" src={p.image} alt="Outfit" />
+              <div className="feed-actions">
                 <button className={'like-btn' + (p.liked_by_me ? ' liked' : '')} onClick={() => toggleLike(p.id)}>
                   {p.liked_by_me ? '❤️' : '🤍'} {p.like_count}
                 </button>
                 {p.profile_id === profileId && (
-                  <button className="btn btn-sm btn-danger" style={{ marginTop: 8 }} onClick={() => remove(p.id)}>Loeschen</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => remove(p.id)}>Loeschen</button>
                 )}
               </div>
+              {p.note && <p className="feed-note">{p.note}</p>}
             </div>
           ))}
         </div>

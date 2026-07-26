@@ -7,7 +7,7 @@ const LEFT = [
   { href: '/outfits', icon: '🔀', label: 'Kombinieren' },
 ];
 const RIGHT = [
-  { href: '/gallery', icon: '🖼️', label: 'Outfits' },
+  { href: '/gallery', icon: '🖼️', label: 'Community' },
   { href: '/profil', icon: '👤', label: 'Profil' },
 ];
 

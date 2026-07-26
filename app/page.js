@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { db } from '../lib/db';
 import ItemCard from '../components/ItemCard';
 import ItemDetail from '../components/ItemDetail';
-import CategoryChips from '../components/CategoryChips';
+import { CATEGORIES, categoryLabel } from '../lib/constants';
 import { getCurrentProfileName } from '../lib/profile';
+import { generateOutfit } from '../lib/outfitEngine';
+import { getLiveWeather, calendarSeason } from '../lib/weather';
 
 function greeting() {
   const h = new Date().getHours();
@@ -15,14 +17,22 @@ function greeting() {
   return 'Guten Abend';
 }
 
+const SEASON_LABEL = { winter: 'Winter', fruehling: 'Fruehling', sommer: 'Sommer', herbst: 'Herbst' };
+
 export default function ClosetPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [filterCategory, setFilterCategory] = useState('alle');
   const [name, setName] = useState('');
+  const [weather, setWeather] = useState(null);
+  const [todayOutfit, setTodayOutfit] = useState(null);
 
-  useEffect(() => { load(); setName(getCurrentProfileName()); }, []);
+  useEffect(() => {
+    load();
+    setName(getCurrentProfileName());
+    getLiveWeather().then(setWeather);
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -44,6 +54,34 @@ export default function ClosetPage() {
     setSelected(patch);
   }
 
+  async function toggleFavorite(item) {
+    const patch = { ...item, isFavorite: !item.isFavorite };
+    await db.addItem(patch);
+    setItems((prev) => prev.map((i) => (i.id === patch.id ? patch : i)));
+  }
+
+  const recent = useMemo(() => items.slice(0, 10), [items]);
+  const favorites = useMemo(() => items.filter((i) => i.isFavorite), [items]);
+
+  const season = weather ? weather.season : calendarSeason();
+
+  useEffect(() => {
+    if (items.length === 0) { setTodayOutfit(null); return; }
+    const seasonMatches = items.filter((i) => !i.season || i.season.length === 0 || i.season.includes(season));
+    const pool = seasonMatches.length ? seasonMatches : items;
+    const seed = pool[Math.floor(Math.random() * pool.length)];
+    setTodayOutfit(generateOutfit(seed, pool));
+    // eslint-disable-next-line
+  }, [items.length, season]);
+
+  function rerollToday() {
+    if (items.length === 0) return;
+    const seasonMatches = items.filter((i) => !i.season || i.season.length === 0 || i.season.includes(season));
+    const pool = seasonMatches.length ? seasonMatches : items;
+    const seed = pool[Math.floor(Math.random() * pool.length)];
+    setTodayOutfit(generateOutfit(seed, pool));
+  }
+
   const filtered = useMemo(() => {
     if (filterCategory === 'alle') return items;
     return items.filter((i) => i.category === filterCategory);
@@ -53,22 +91,96 @@ export default function ClosetPage() {
     <div>
       <div className="page-header">
         <h1>{greeting()}{name ? `, ${name}` : ''} 👋</h1>
-        <p>{items.length} Teile in deinem Schrank</p>
+        <p>Du hast {items.length} Kleidungsstuecke in deinem Schrank.</p>
       </div>
 
-      <CategoryChips value={filterCategory} onChange={setFilterCategory} includeAll />
+      {weather && (
+        <div className="weather-chip">
+          <span>{weather.icon}</span>
+          <span>{weather.tempC}°C · {weather.label}</span>
+        </div>
+      )}
 
       {loading ? (
         <p className="card-sub">Lade...</p>
-      ) : filtered.length === 0 ? (
+      ) : items.length === 0 ? (
         <div className="empty">
           Noch keine Kleidungsstuecke.<br />
           <Link href="/add" className="btn btn-primary" style={{ marginTop: 14, display: 'inline-flex' }}>+ Teil hinzufuegen</Link>
         </div>
       ) : (
-        <div className="grid-2">
-          {filtered.map((item) => <ItemCard key={item.id} item={item} onClick={setSelected} />)}
-        </div>
+        <>
+          {todayOutfit && (
+            <div className="section">
+              <div className="section-title">Outfit fuer heute · {SEASON_LABEL[season]}</div>
+              <div className="outfit-card">
+                <div className="outfit-strip">
+                  {todayOutfit.items.map((i) => <img key={i.id} src={i.image} alt={i.subtype || ''} />)}
+                </div>
+                <div className="row" style={{ marginTop: 12 }}>
+                  <button className="btn" onClick={rerollToday}>🔀 Anderer Vorschlag</button>
+                  <Link href="/outfits" className="btn btn-primary">Zum Kombinieren</Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="section">
+            <div className="section-title-row">
+              <span className="section-title" style={{ marginBottom: 0 }}>Zuletzt hinzugefuegt</span>
+            </div>
+            <div className="hscroll">
+              {recent.map((i) => (
+                <div key={i.id} className="hscroll-item" onClick={() => setSelected(i)}>
+                  <img src={i.image} alt={i.subtype || ''} />
+                  <p className="card-title">{i.subtype || categoryLabel(i.category)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {favorites.length > 0 && (
+            <div className="section">
+              <div className="section-title">Deine Favoriten</div>
+              <div className="hscroll">
+                {favorites.map((i) => (
+                  <div key={i.id} className="hscroll-item" onClick={() => setSelected(i)}>
+                    <img src={i.image} alt={i.subtype || ''} />
+                    <p className="card-title">{i.subtype || categoryLabel(i.category)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="section">
+            <div className="section-title">Kategorien</div>
+            <div className="cat-tile-grid">
+              {CATEGORIES.map((c) => (
+                <button key={c.key} type="button" className="cat-tile"
+                  onClick={() => setFilterCategory(filterCategory === c.key ? 'alle' : c.key)}
+                  style={filterCategory === c.key ? { borderColor: 'var(--ink)' } : undefined}>
+                  <span className="cat-tile-icon">{c.icon}</span>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="section">
+            <div className="section-title-row">
+              <span className="section-title" style={{ marginBottom: 0 }}>
+                {filterCategory === 'alle' ? 'Alles' : categoryLabel(filterCategory)}
+              </span>
+              {filterCategory !== 'alle' && <a onClick={() => setFilterCategory('alle')} style={{ cursor: 'pointer' }}>Alle anzeigen</a>}
+            </div>
+            <div className="grid-2">
+              {filtered.map((item) => (
+                <ItemCard key={item.id} item={item} onClick={setSelected} onToggleFavorite={toggleFavorite} />
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {selected && <ItemDetail item={selected} onClose={() => setSelected(null)} onSave={handleSave} onDelete={handleDelete} />}

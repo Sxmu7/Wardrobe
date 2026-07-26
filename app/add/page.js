@@ -4,25 +4,33 @@ import { useRouter } from 'next/navigation';
 import { fileToResizedDataUrl } from '../../lib/image';
 import { getDominantColor, classifyColor, hexToRgb } from '../../lib/color';
 import { analyzeItemImage } from '../../lib/ai';
-import { CATEGORIES, FIT_OPTIONS, PATTERN_OPTIONS, SEASON_OPTIONS, categoryLabel } from '../../lib/constants';
+import { CATEGORIES, FIT_OPTIONS, PATTERN_OPTIONS, SEASON_OPTIONS, COLOR_SWATCHES, categoryLabel, categoryIcon } from '../../lib/constants';
 import { db } from '../../lib/db';
-
-const TOTAL_STEPS = 4;
 
 function emptyDraft() {
   return {
-    category: 'oberteil', subtype: '', colorHex: '#888888', colorLabel: '', pattern: 'uni',
-    season: [], material: '', size: '', fit: 'Unbekannt', notes: '', uncertain: [],
+    category: 'oberteil', subtype: '', colorHex: '#9b9b9b', colorLabel: 'Grau', colorFamily: 'grau', colorHue: 0, isNeutral: true,
+    pattern: 'uni', season: [], material: '', brand: '', size: '', fit: 'Unbekannt', notes: '', uncertain: [],
   };
 }
 
+const CHECK_STEPS = [
+  { key: 'colorHex', label: 'Farbe erkannt' },
+  { key: 'category', label: 'Kategorie erkannt' },
+  { key: 'pattern', label: 'Muster erkannt' },
+  { key: 'season', label: 'Saison wird bestimmt' },
+];
+
+function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
 export default function AddItemPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const [phase, setPhase] = useState('form'); // form -> analyzing -> confirm
   const [dataUrl, setDataUrl] = useState(null);
   const [draft, setDraft] = useState(emptyDraft());
-  const [analyzing, setAnalyzing] = useState(false);
+  const [checks, setChecks] = useState({});
   const [aiError, setAiError] = useState('');
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
   function updateDraft(patch) { setDraft((d) => ({ ...d, ...patch })); }
@@ -30,91 +38,91 @@ export default function AddItemPage() {
     const cur = draft.season || [];
     updateDraft({ season: cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s] });
   }
+  function pickColor(swatch) {
+    updateDraft({ colorHex: swatch.hex, colorLabel: swatch.label, colorFamily: swatch.family, colorHue: swatch.hue, isNeutral: swatch.isNeutral });
+    setShowColorPicker(false);
+  }
 
   async function handleFile(file) {
     const url = await fileToResizedDataUrl(file);
     setDataUrl(url);
   }
 
-  async function handleManual() {
+  async function runAnalysis(withAI) {
     if (!dataUrl) return;
-    setAnalyzing(true);
+    setPhase('analyzing');
     setAiError('');
-    try {
-      const dom = await getDominantColor(dataUrl);
-      const cls = classifyColor(dom.r, dom.g, dom.b);
-      updateDraft({
-        colorHex: dom.hex, colorLabel: cls.label, colorFamily: cls.family, colorHue: cls.hue, isNeutral: cls.isNeutral,
-        uncertain: ['size', 'fit', 'subtype', 'pattern', 'season', 'material'],
-      });
-      setStep(2);
-    } finally {
-      setAnalyzing(false);
-    }
-  }
+    setChecks({});
 
-  async function handleAnalyze() {
-    if (!dataUrl) return;
-    setAnalyzing(true);
-    setAiError('');
-    try {
-      const dom = await getDominantColor(dataUrl);
-      const cls = classifyColor(dom.r, dom.g, dom.b);
-      let next = { colorHex: dom.hex, colorLabel: cls.label, colorFamily: cls.family, colorHue: cls.hue, isNeutral: cls.isNeutral };
-      const apiKey = localStorage.getItem('anthropic_api_key');
-      const model = localStorage.getItem('anthropic_model');
-      let uncertain = ['size', 'fit'];
-      if (apiKey) {
-        try {
-          const ai = await analyzeItemImage(dataUrl, apiKey, model);
-          next.subtype = ai.subtype || '';
-          if (ai.colorHex) next.colorHex = ai.colorHex;
-          next.colorLabel = ai.colorNameDe || next.colorLabel;
-          next.pattern = ai.pattern || 'uni';
-          next.season = Array.isArray(ai.season) ? ai.season : [];
-          next.material = ai.material || '';
-          if (ai.fitGuess) next.fit = ai.fitGuess;
-          const conf = ai.confidence || {};
-          Object.keys(conf).forEach((k) => { if (conf[k] < 0.6 && uncertain.indexOf(k) === -1) uncertain.push(k); });
-          if (ai.category) next.category = ai.category;
-        } catch (e) {
-          setAiError(e.message + ' - bitte Angaben manuell pruefen.');
-        }
-      } else {
-        setAiError('Kein API-Key hinterlegt - bitte Angaben manuell pruefen (Profil-Einstellungen).');
+    const dom = await getDominantColor(dataUrl);
+    const cls = classifyColor(dom.r, dom.g, dom.b);
+    updateDraft({ colorHex: dom.hex, colorLabel: cls.label, colorFamily: cls.family, colorHue: cls.hue, isNeutral: cls.isNeutral });
+    setChecks((c) => ({ ...c, colorHex: true }));
+    await wait(300);
+
+    let aiResult = null;
+    let uncertain = ['size', 'fit', 'brand'];
+    const apiKey = localStorage.getItem('anthropic_api_key');
+    const model = localStorage.getItem('anthropic_model');
+
+    if (withAI && apiKey) {
+      try {
+        aiResult = await analyzeItemImage(dataUrl, apiKey, model);
+      } catch (e) {
+        setAiError(e.message + ' - bitte Angaben manuell pruefen.');
       }
-      next.uncertain = uncertain;
-      updateDraft(next);
-      setStep(2);
-    } finally {
-      setAnalyzing(false);
+    } else if (withAI && !apiKey) {
+      setAiError('Kein API-Key hinterlegt - bitte Angaben manuell pruefen (Profil-Einstellungen).');
     }
+
+    if (aiResult) {
+      updateDraft({
+        category: aiResult.category || draft.category,
+        subtype: aiResult.subtype || '',
+        pattern: aiResult.pattern || 'uni',
+        season: Array.isArray(aiResult.season) ? aiResult.season : [],
+        material: aiResult.material || '',
+        fit: aiResult.fitGuess || draft.fit,
+      });
+      if (aiResult.colorHex) {
+        const rgb = hexToRgb(aiResult.colorHex);
+        const c2 = classifyColor(rgb.r, rgb.g, rgb.b);
+        updateDraft({ colorHex: aiResult.colorHex, colorLabel: aiResult.colorNameDe || c2.label, colorFamily: c2.family, colorHue: c2.hue, isNeutral: c2.isNeutral });
+      }
+      const conf = aiResult.confidence || {};
+      Object.keys(conf).forEach((k) => { if (conf[k] < 0.6 && uncertain.indexOf(k) === -1) uncertain.push(k); });
+    } else {
+      uncertain = uncertain.concat(['category', 'subtype', 'pattern', 'season']);
+    }
+
+    setChecks((c) => ({ ...c, category: true }));
+    await wait(280);
+    setChecks((c) => ({ ...c, pattern: true }));
+    await wait(280);
+    setChecks((c) => ({ ...c, season: true }));
+    updateDraft({ uncertain });
+    await wait(450);
+    setPhase('confirm');
   }
 
-  async function handleSave(addAnother) {
+  async function handleSave() {
     let colorFamily = draft.colorFamily, colorHue = draft.colorHue, isNeutral = draft.isNeutral;
-    try {
-      const rgb = hexToRgb(draft.colorHex);
-      const cls = classifyColor(rgb.r, rgb.g, rgb.b);
-      colorFamily = cls.family; colorHue = cls.hue; isNeutral = cls.isNeutral;
-    } catch (e) {}
     const item = {
       id: crypto.randomUUID(),
       image: dataUrl,
       ...draft,
       colorFamily, colorHue, isNeutral,
       wornCount: 0,
+      isFavorite: false,
       createdAt: Date.now(),
     };
     await db.addItem(item);
     setSavedFlash(true);
-    setTimeout(() => {
-      if (addAnother) {
-        setStep(1); setDataUrl(null); setDraft(emptyDraft()); setAiError(''); setSavedFlash(false);
-      } else {
-        router.push('/');
-      }
-    }, 500);
+    setTimeout(() => router.push('/'), 500);
+  }
+
+  function addAnother() {
+    setPhase('form'); setDataUrl(null); setDraft(emptyDraft()); setAiError(''); setSavedFlash(false); setChecks({});
   }
 
   return (
@@ -122,20 +130,15 @@ export default function AddItemPage() {
       <div className="page-header">
         <h1>Neues Teil</h1>
       </div>
-      <div className="step-dots">
-        {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-          <span key={i} className={'step-dot' + (i === step - 1 ? ' active' : '')} />
-        ))}
-      </div>
 
-      {step === 1 && (
+      {phase === 'form' && (
         <div>
           <div className="field">
             <label>Kategorie</label>
             <div className="pill-row">
               {CATEGORIES.map((c) => (
                 <button key={c.key} type="button" className={'pill' + (draft.category === c.key ? ' active' : '')}
-                  onClick={() => updateDraft({ category: c.key })}>{c.label}</button>
+                  onClick={() => updateDraft({ category: c.key })}>{c.icon} {c.label}</button>
               ))}
             </div>
           </div>
@@ -144,52 +147,104 @@ export default function AddItemPage() {
             <img className="preview-img" src={dataUrl} alt="Vorschau" />
           ) : (
             <label className="upload-box">
-              <input type="file" accept="image/*" style={{ display: 'none' }}
+              <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
                 onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
               <span className="upload-icon">📷</span>
-              Foto hochladen<br /><u>oder durchsuchen</u>
+              Foto aufnehmen oder hochladen
             </label>
           )}
 
           <button className="btn btn-primary btn-block" style={{ marginTop: 16 }}
-            onClick={handleAnalyze} disabled={!dataUrl || analyzing}>
-            {analyzing ? 'Analysiere...' : '✨ Mit KI analysieren'}
+            onClick={() => runAnalysis(true)} disabled={!dataUrl}>
+            ✨ Mit KI analysieren
           </button>
           <button className="btn btn-block" style={{ marginTop: 10 }}
-            onClick={handleManual} disabled={!dataUrl || analyzing}>
+            onClick={() => runAnalysis(false)} disabled={!dataUrl}>
             Ohne KI manuell eintragen
           </button>
         </div>
       )}
 
-      {step === 2 && (
+      {phase === 'analyzing' && (
         <div>
           <img className="preview-img" src={dataUrl} alt="Vorschau" />
+          <p style={{ textAlign: 'center', fontWeight: 700, marginBottom: 4 }}>Dein Kleidungsstueck wird analysiert</p>
+          <div className="check-list">
+            {CHECK_STEPS.map((s) => (
+              <div key={s.key} className={'check-item' + (checks[s.key] ? ' done' : ' spin')}>
+                <span className="check-icon">{checks[s.key] ? '✓' : '○'}</span>
+                {s.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {phase === 'confirm' && (
+        <div>
+          <img className="preview-img" src={dataUrl} alt="Vorschau" />
+          <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>
+            Wir haben {draft.isNeutral ? 'einen' : 'einen'} {draft.colorLabel?.toLowerCase()} {(draft.subtype || categoryLabel(draft.category)).toLowerCase()} erkannt.
+          </p>
           {aiError && <div className="banner">{aiError}</div>}
-          <div className="row">
-            <div className="field">
-              <label>Bezeichnung</label>
-              <input type="text" value={draft.subtype} placeholder="z.B. Pullover" onChange={(e) => updateDraft({ subtype: e.target.value })} />
+
+          <div className="field">
+            <label>Kategorie</label>
+            <div className="pill-row">
+              {CATEGORIES.map((c) => (
+                <button key={c.key} type="button" className={'pill' + (draft.category === c.key ? ' active' : '')}
+                  onClick={() => updateDraft({ category: c.key })}>{c.icon} {c.label}</button>
+              ))}
             </div>
           </div>
-          <div className="row">
-            <div className="field">
-              <label>Farbe {draft.uncertain?.includes('colorHex') && <span className="uncertain-badge">KI unsicher</span>}</label>
-              <input type="text" value={draft.colorHex} onChange={(e) => updateDraft({ colorHex: e.target.value })} style={{ marginBottom: 6 }} />
-              <input type="text" value={draft.colorLabel} placeholder="Farbname" onChange={(e) => updateDraft({ colorLabel: e.target.value })} />
+
+          <div className="field">
+            <label>Bezeichnung {draft.uncertain?.includes('subtype') && <span className="uncertain-badge">bitte pruefen</span>}</label>
+            <input type="text" value={draft.subtype} placeholder="z.B. Pullover" onChange={(e) => updateDraft({ subtype: e.target.value })} />
+          </div>
+
+          <div className="field">
+            <label>Farbe {draft.uncertain?.includes('colorHex') && <span className="uncertain-badge">bitte pruefen</span>}</label>
+            <div className="color-preview-row" onClick={() => setShowColorPicker((v) => !v)} style={{ cursor: 'pointer' }}>
+              <span className="color-preview-swatch" style={{ background: draft.colorHex }} />
+              <span>{draft.colorLabel}</span>
+              <span className="card-sub" style={{ marginLeft: 'auto' }}>Farbe aendern ›</span>
             </div>
-            <div className="field">
-              <label>Muster</label>
-              <div className="pill-row">
-                {PATTERN_OPTIONS.map((p) => (
-                  <button key={p} type="button" className={'pill' + (draft.pattern === p.toLowerCase() ? ' active' : '')}
-                    onClick={() => updateDraft({ pattern: p.toLowerCase() })}>{p}</button>
+            {showColorPicker && (
+              <div className="swatch-grid">
+                {COLOR_SWATCHES.map((s) => (
+                  <button key={s.family} type="button" className={'swatch-option' + (draft.colorFamily === s.family ? ' active' : '')}
+                    onClick={() => pickColor(s)}>
+                    <span className="swatch-circle" style={{ background: s.hex }} />
+                    <span>{s.label}</span>
+                  </button>
                 ))}
               </div>
+            )}
+          </div>
+
+          <div className="field">
+            <label>Muster {draft.uncertain?.includes('pattern') && <span className="uncertain-badge">bitte pruefen</span>}</label>
+            <div className="pill-row">
+              {PATTERN_OPTIONS.map((p) => (
+                <button key={p} type="button" className={'pill' + (draft.pattern === p.toLowerCase() ? ' active' : '')}
+                  onClick={() => updateDraft({ pattern: p.toLowerCase() })}>{p}</button>
+              ))}
             </div>
           </div>
+
           <div className="field">
-            <label>Saison</label>
+            <label>Fit {draft.uncertain?.includes('fit') && <span className="uncertain-badge">bitte pruefen</span>}</label>
+            <div className="pill-row">
+              {FIT_OPTIONS.map((f) => (
+                <button key={f} type="button" className={'pill' + (draft.fit === f ? ' active' : '')}
+                  onClick={() => updateDraft({ fit: f })}>{f}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <label>Saison {draft.uncertain?.includes('season') && <span className="uncertain-badge">bitte pruefen</span>}</label>
             <div className="chip-group">
               {SEASON_OPTIONS.map((s) => (
                 <span key={s} className={'chip' + (draft.season?.includes(s.toLowerCase()) ? ' selected' : '')}
@@ -197,61 +252,29 @@ export default function AddItemPage() {
               ))}
             </div>
           </div>
-          <div className="row">
-            <button className="btn" onClick={() => setStep(1)}>Zurueck</button>
-            <button className="btn btn-primary" onClick={() => setStep(3)}>Weiter</button>
-          </div>
-        </div>
-      )}
 
-      {step === 3 && (
-        <div>
-          <p className="card-sub" style={{ marginBottom: 16 }}>Das kann die KI von einem Foto nicht wissen - bitte kurz angeben:</p>
           <div className="row">
             <div className="field">
               <label>Groesse</label>
               <input type="text" value={draft.size} placeholder="z.B. M oder 38" onChange={(e) => updateDraft({ size: e.target.value })} />
             </div>
             <div className="field">
-              <label>Fit / Passform</label>
-              <div className="pill-row">
-                {FIT_OPTIONS.map((f) => (
-                  <button key={f} type="button" className={'pill' + (draft.fit === f ? ' active' : '')}
-                    onClick={() => updateDraft({ fit: f })}>{f}</button>
-                ))}
-              </div>
+              <label>Marke</label>
+              <input type="text" value={draft.brand} placeholder="optional" onChange={(e) => updateDraft({ brand: e.target.value })} />
             </div>
           </div>
-          <div className="field">
-            <label>Material</label>
-            <input type="text" value={draft.material} onChange={(e) => updateDraft({ material: e.target.value })} />
-          </div>
-          <div className="row">
-            <button className="btn" onClick={() => setStep(2)}>Zurueck</button>
-            <button className="btn btn-primary" onClick={() => setStep(4)}>Weiter</button>
-          </div>
-        </div>
-      )}
 
-      {step === 4 && (
-        <div>
-          <img className="preview-img" src={dataUrl} alt="Vorschau" />
-          <h2 style={{ marginTop: 0 }}>{draft.subtype || categoryLabel(draft.category)}</h2>
-          <p className="card-sub"><span className="swatch" style={{ background: draft.colorHex }} /> {draft.colorLabel} - {categoryLabel(draft.category)}</p>
-          <p className="card-sub">Groesse: {draft.size || '-'} - Fit: {draft.fit}</p>
           <div className="field">
-            <label>Notizen (optional)</label>
+            <label>Notiz (optional)</label>
             <textarea value={draft.notes} onChange={(e) => updateDraft({ notes: e.target.value })} />
           </div>
+
           <div className="row">
-            <button className="btn" onClick={() => setStep(3)}>Zurueck</button>
-            <button className="btn btn-primary" onClick={() => handleSave(false)} disabled={savedFlash}>
+            <button className="btn" onClick={addAnother}>Abbrechen</button>
+            <button className="btn btn-primary" onClick={handleSave} disabled={savedFlash}>
               {savedFlash ? 'Gespeichert ✓' : 'Speichern'}
             </button>
           </div>
-          <button className="btn" style={{ marginTop: 10 }} onClick={() => handleSave(true)} disabled={savedFlash}>
-            Speichern & weiteres Teil hinzufuegen
-          </button>
         </div>
       )}
     </div>

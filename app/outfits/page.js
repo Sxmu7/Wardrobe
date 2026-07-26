@@ -3,50 +3,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../lib/db';
 import { itemsMatch } from '../../lib/color';
 import { categoryLabel, SEASON_OPTIONS } from '../../lib/constants';
-
-function getSlotsForSeed(seedCategory) {
-  const isKleid = seedCategory === 'kleid';
-  const needsTop = !isKleid && seedCategory !== 'oberteil';
-  const needsBottom = !isKleid && ['hose', 'rock'].indexOf(seedCategory) === -1;
-  const slots = [];
-  if (needsTop) slots.push({ key: 'oberteil', label: 'Oberteil', match: ['oberteil'], required: true });
-  if (needsBottom) slots.push({ key: 'unterteil', label: 'Hose/Rock', match: ['hose', 'rock'], required: true });
-  if (seedCategory !== 'schuhe') slots.push({ key: 'schuhe', label: 'Schuhe', match: ['schuhe'], required: true });
-  if (seedCategory !== 'jacke') slots.push({ key: 'jacke', label: 'Jacke', match: ['jacke'], required: false });
-  if (['accessoire', 'tasche'].indexOf(seedCategory) === -1) slots.push({ key: 'accessoire', label: 'Accessoire/Tasche', match: ['accessoire', 'tasche'], required: false });
-  return slots;
-}
-
-function pickForSlot(candidates, chosenSoFar) {
-  if (candidates.length === 0) return null;
-  const strict = candidates.filter((c) => chosenSoFar.every((ch) => itemsMatch(c, ch)));
-  const pool = strict.length ? strict : candidates;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function generateOutfit(seed, allItems) {
-  const slots = getSlotsForSeed(seed.category);
-  let chosen = [seed];
-  const missing = [];
-  for (const slot of slots) {
-    const candidates = allItems.filter((i) => slot.match.indexOf(i.category) !== -1 && i.id !== seed.id && itemsMatch(seed, i));
-    const pick = pickForSlot(candidates, chosen);
-    if (pick) chosen.push(pick); else if (slot.required) missing.push(slot.label);
-  }
-  const totalSlots = slots.length + 1;
-  const filled = chosen.length;
-  const allSameFamilyOrNeutral = chosen.every((i) => i.isNeutral || i.colorFamily === seed.colorFamily);
-  const score = Math.min(99, Math.round(58 + (filled / totalSlots) * 32 + (allSameFamilyOrNeutral ? 9 : 0)));
-  return { items: chosen, missing, score };
-}
+import { generateOutfit, slotRole } from '../../lib/outfitEngine';
+import { compositeOutfitImage } from '../../lib/share';
+import { getCurrentProfileId, trySyncPendingProfile } from '../../lib/profile';
 
 export default function OutfitsPage() {
   const [items, setItems] = useState([]);
   const [outfits, setOutfits] = useState([]);
   const [seedId, setSeedId] = useState('');
   const [season, setSeason] = useState('alle');
-  const [suggestions, setSuggestions] = useState([]);
+  const [outfit, setOutfit] = useState(null);
   const [outfitName, setOutfitName] = useState('');
+  const [wornFlash, setWornFlash] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareMsg, setShareMsg] = useState('');
 
   useEffect(() => { load(); }, []);
 
@@ -65,35 +35,75 @@ export default function OutfitsPage() {
 
   const seed = seasonFiltered.find((i) => i.id === seedId) || items.find((i) => i.id === seedId);
 
-  const compatible = useMemo(() => {
-    if (!seed) return {};
-    const groups = {};
-    seasonFiltered.filter((i) => i.id !== seed.id && itemsMatch(seed, i)).forEach((i) => {
-      groups[i.category] = groups[i.category] || [];
-      groups[i.category].push(i);
-    });
-    return groups;
-  }, [seed, seasonFiltered]);
-
   function reroll() {
     if (!seed) return;
-    const a = generateOutfit(seed, seasonFiltered);
-    const b = generateOutfit(seed, seasonFiltered);
-    setSuggestions([a, b]);
+    setOutfit(generateOutfit(seed, seasonFiltered));
+    setWornFlash(false);
+    setShareMsg('');
   }
 
   useEffect(() => { if (seed) reroll(); /* eslint-disable-next-line */ }, [seedId, season, items.length]);
 
-  async function saveOutfit(suggestion) {
-    const outfit = {
+  function swapSlot(item) {
+    if (!outfit) return;
+    const candidates = seasonFiltered.filter((i) =>
+      i.category === item.category && i.id !== item.id &&
+      outfit.items.filter((x) => x.id !== item.id).every((x) => itemsMatch(x, i))
+    );
+    if (candidates.length === 0) return;
+    const next = candidates[Math.floor(Math.random() * candidates.length)];
+    setOutfit((prev) => ({ ...prev, items: prev.items.map((i) => (i.id === item.id ? next : i)) }));
+  }
+
+  async function saveOutfit() {
+    if (!outfit) return;
+    const rec = {
       id: crypto.randomUUID(),
       name: outfitName || `Outfit mit ${seed.subtype || categoryLabel(seed.category)}`,
-      itemIds: suggestion.items.map((i) => i.id),
+      itemIds: outfit.items.map((i) => i.id),
       createdAt: Date.now(),
     };
-    await db.addOutfit(outfit);
-    setOutfits((prev) => [outfit, ...prev]);
+    await db.addOutfit(rec);
+    setOutfits((prev) => [rec, ...prev]);
     setOutfitName('');
+  }
+
+  async function markWornToday() {
+    if (!outfit) return;
+    const updated = outfit.items.map((i) => ({ ...i, wornCount: (i.wornCount || 0) + 1, lastWornAt: Date.now() }));
+    await Promise.all(updated.map((i) => db.addItem(i)));
+    setItems((prev) => prev.map((i) => updated.find((u) => u.id === i.id) || i));
+    setOutfit((prev) => ({ ...prev, items: updated }));
+    setWornFlash(true);
+    setTimeout(() => setWornFlash(false), 1800);
+  }
+
+  async function shareWithFriends() {
+    if (!outfit) return;
+    setSharing(true);
+    setShareMsg('');
+    try {
+      const synced = await trySyncPendingProfile();
+      const profileId = synced ? synced.id : getCurrentProfileId();
+      if (!profileId) {
+        setShareMsg('Bitte lege zuerst ein Profil an (Tab Profil).');
+        setSharing(false);
+        return;
+      }
+      const image = await compositeOutfitImage(outfit.items);
+      const res = await fetch('/api/outfit-photos', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ profileId, image, note: outfitName || `Outfit mit ${seed.subtype || categoryLabel(seed.category)}` }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Fehler beim Teilen');
+      setShareMsg('In der Community geteilt ✓');
+    } catch (e) {
+      setShareMsg(e.message);
+    } finally {
+      setSharing(false);
+    }
   }
 
   async function removeOutfit(id) {
@@ -106,18 +116,22 @@ export default function OutfitsPage() {
     return <div className="empty">Fuege zuerst Kleidungsstuecke in deinem Schrank hinzu.</div>;
   }
 
-  const topScore = suggestions.length ? Math.max(...suggestions.map((s) => s.score)) : null;
+  const rows = outfit
+    ? { top: outfit.items.filter((i) => slotRole(i.category) === 'top'),
+        mid: outfit.items.filter((i) => slotRole(i.category) === 'mid'),
+        bottom: outfit.items.filter((i) => slotRole(i.category) === 'bottom') }
+    : { top: [], mid: [], bottom: [] };
 
   return (
     <div>
       <div className="page-header">
         <h1>Kombinieren</h1>
-        <p>Waehle ein Teil - wir zeigen passende Kombinationen.</p>
+        <p>Waehle ein Teil - wir bauen dir ein Outfit.</p>
       </div>
 
-      {topScore !== null && (
+      {outfit && (
         <div className="top-badge-wrap">
-          <span className="top-badge">Top-Match {topScore}%</span>
+          <span className="top-badge">Top-Match {outfit.score}%</span>
         </div>
       )}
 
@@ -152,57 +166,66 @@ export default function OutfitsPage() {
         ))}
       </div>
 
-      {seed && (
+      {outfit && (
         <>
-          <div className="row" style={{ marginBottom: 20 }}>
-            <button className="btn btn-block" onClick={reroll}>🔀 Neu mischen</button>
-          </div>
-
-          <div className="section">
-            <div className="section-title">Alles, was zu {seed.subtype || categoryLabel(seed.category)} passt</div>
-            {Object.keys(compatible).length === 0 ? (
-              <p className="card-sub">Noch keine farblich passenden Teile gefunden - lade mehr Kleidung hoch.</p>
-            ) : (
-              Object.entries(compatible).map(([cat, list]) => (
-                <div key={cat} style={{ marginBottom: 14 }}>
-                  <p className="card-sub" style={{ marginBottom: 6, fontWeight: 600 }}>{categoryLabel(cat)}</p>
-                  <div className="outfit-strip">
-                    {list.map((i) => <img key={i.id} src={i.image} title={i.subtype} alt={i.subtype || ''} />)}
+          <div className="moodboard">
+            {rows.top.length > 0 && (
+              <div className="moodboard-row">
+                {rows.top.map((i) => (
+                  <div key={i.id} className="moodboard-slot top" onClick={() => swapSlot(i)} title="Antippen zum Tauschen">
+                    <img src={i.image} alt={i.subtype || ''} />
+                    <span className="moodboard-swap">🔀</span>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
+            )}
+            {rows.mid.length > 0 && (
+              <div className="moodboard-row">
+                {rows.mid.map((i) => (
+                  <div key={i.id} className="moodboard-slot mid" onClick={() => swapSlot(i)} title="Antippen zum Tauschen">
+                    <img src={i.image} alt={i.subtype || ''} />
+                    <span className="moodboard-swap">🔀</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {rows.bottom.length > 0 && (
+              <div className="moodboard-row">
+                {rows.bottom.map((i) => (
+                  <div key={i.id} className="moodboard-slot bottom" onClick={() => swapSlot(i)} title="Antippen zum Tauschen">
+                    <img src={i.image} alt={i.subtype || ''} />
+                    <span className="moodboard-swap">🔀</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
-          <div className="section">
-            <div className="section-title">Vorschlaege</div>
-            <div className="field">
-              <input type="text" placeholder="Name fuer gespeicherte Outfits (optional)"
-                value={outfitName} onChange={(e) => setOutfitName(e.target.value)} />
-            </div>
-            {suggestions.map((s, idx) => (
-              <div key={idx} className="outfit-card">
-                <div className="outfit-card-head">
-                  <strong>Vorschlag {idx + 1}</strong>
-                  <span className="card-sub">{s.score}% Match</span>
-                </div>
-                <div className="outfit-strip">
-                  {s.items.map((i) => <img key={i.id} src={i.image} title={i.subtype} alt={i.subtype || ''} />)}
-                </div>
-                {s.missing.length > 0 && (
-                  <p className="card-sub" style={{ marginTop: 8 }}>Fehlt noch: {s.missing.join(', ')}</p>
-                )}
-                <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={() => saveOutfit(s)}>
-                  Als Outfit speichern
-                </button>
-              </div>
-            ))}
+          {outfit.missing.length > 0 && (
+            <p className="card-sub" style={{ textAlign: 'center', marginBottom: 12 }}>Fehlt noch: {outfit.missing.join(', ')}</p>
+          )}
+
+          <div className="field">
+            <input type="text" placeholder="Name fuer dieses Outfit (optional)"
+              value={outfitName} onChange={(e) => setOutfitName(e.target.value)} />
           </div>
+
+          <div className="row">
+            <button className="btn" onClick={reroll}>🔀 Neu mischen</button>
+            <button className="btn btn-primary" onClick={saveOutfit}>Outfit speichern</button>
+          </div>
+          <div className="row" style={{ marginTop: 10 }}>
+            <button className="btn" onClick={markWornToday}>{wornFlash ? '✓ Notiert' : '👕 Heute getragen'}</button>
+            <button className="btn btn-primary" onClick={shareWithFriends} disabled={sharing}>
+              {sharing ? 'Teilt...' : '📤 Mit Freunden teilen'}
+            </button>
+          </div>
+          {shareMsg && <p className="card-sub" style={{ textAlign: 'center', marginTop: 8 }}>{shareMsg}</p>}
         </>
       )}
 
       {outfits.length > 0 && (
-        <div className="section">
+        <div className="section" style={{ marginTop: 24 }}>
           <div className="section-title">Gespeicherte Outfits</div>
           {outfits.map((o) => (
             <div key={o.id} className="outfit-card">
