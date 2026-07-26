@@ -24,11 +24,14 @@ export default function Onboarding({ onComplete }) {
     try {
       const profile = await createProfileRemote(trimmed);
       setCurrentProfile(profile.id, profile.name);
-      setStep(1);
     } catch (e) {
-      setError(e.message || 'Profil konnte nicht erstellt werden.');
+      // Kein Server/DB erreichbar (z.B. Postgres noch nicht eingerichtet) -
+      // App trotzdem nutzbar machen, Freunde-Feature synct spaeter automatisch.
+      setCurrentProfile(null, trimmed);
+      localStorage.setItem('kleiderschrank_profile_pending', '1');
     } finally {
       setSaving(false);
+      setStep(1);
     }
   }
 

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/db';
 import { CATEGORIES, categoryLabel } from '../../lib/constants';
-import { getCurrentProfileId, getCurrentProfileName, setCurrentProfile, fetchProfiles, createProfileRemote } from '../../lib/profile';
+import { getCurrentProfileId, getCurrentProfileName, setCurrentProfile, fetchProfiles, createProfileRemote, trySyncPendingProfile } from '../../lib/profile';
 import { getStoredTheme, setStoredTheme } from '../../lib/theme';
 
 const MODELS = [
@@ -36,6 +36,9 @@ export default function ProfilPage() {
     setModel(localStorage.getItem('anthropic_model') || MODELS[0].value);
     loadStats();
     loadProfiles();
+    trySyncPendingProfile().then((synced) => {
+      if (synced) { setProfileId(synced.id); loadProfiles(); }
+    });
   }, []);
 
   async function loadStats() {

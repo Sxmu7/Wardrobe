@@ -97,6 +97,7 @@ export default function OutfitsPage() {
   }
 
   async function removeOutfit(id) {
+    if (!window.confirm('Dieses gespeicherte Outfit wirklich loeschen?')) return;
     await db.deleteOutfit(id);
     setOutfits((prev) => prev.filter((o) => o.id !== id));
   }

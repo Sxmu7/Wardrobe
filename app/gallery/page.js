@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { fileToResizedDataUrl } from '../../lib/image';
-import { getCurrentProfileId } from '../../lib/profile';
+import { getCurrentProfileId, trySyncPendingProfile } from '../../lib/profile';
 
 export default function GalleryPage() {
   const [profileId, setProfileId] = useState(null);
@@ -13,10 +13,12 @@ export default function GalleryPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const id = getCurrentProfileId();
-    setProfileId(id);
-    if (id) load(id);
-    else setLoading(false);
+    (async () => {
+      const synced = await trySyncPendingProfile();
+      const id = synced ? synced.id : getCurrentProfileId();
+      setProfileId(id);
+      if (id) load(id); else setLoading(false);
+    })();
   }, []);
 
   async function load(id) {
@@ -73,6 +75,7 @@ export default function GalleryPage() {
   }
 
   async function remove(photoId) {
+    if (!window.confirm('Dieses Outfit-Foto wirklich loeschen?')) return;
     try {
       await fetch('/api/outfit-photos', {
         method: 'DELETE',

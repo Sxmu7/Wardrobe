@@ -278,8 +278,11 @@ a { color: inherit; }
 }
 .splash-logo {
   font-size: 42px; font-weight: 900; color: var(--bg); letter-spacing: -0.02em;
-  animation: splashLogoIn .6s cubic-bezier(.2,.9,.25,1) both;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 50px; display: flex; align-items: center;
 }
+@keyframes cursorBlink { 0%, 45% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.splash-cursor { display: inline-block; margin-left: 2px; animation: cursorBlink .9s steps(1) infinite; }
 .splash-tagline {
   font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
   color: var(--bg); opacity: 0; transition: opacity .6s ease, transform .6s ease; transform: translateY(6px);

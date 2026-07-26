@@ -5,14 +5,24 @@ import { db } from '../lib/db';
 import ItemCard from '../components/ItemCard';
 import ItemDetail from '../components/ItemDetail';
 import CategoryChips from '../components/CategoryChips';
+import { getCurrentProfileName } from '../lib/profile';
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 5) return 'Noch wach';
+  if (h < 11) return 'Guten Morgen';
+  if (h < 18) return 'Hey';
+  return 'Guten Abend';
+}
 
 export default function ClosetPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [filterCategory, setFilterCategory] = useState('alle');
+  const [name, setName] = useState('');
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); setName(getCurrentProfileName()); }, []);
 
   async function load() {
     setLoading(true);
@@ -22,6 +32,7 @@ export default function ClosetPage() {
   }
 
   async function handleDelete(id) {
+    if (!window.confirm('Dieses Teil wirklich loeschen?')) return;
     await db.deleteItem(id);
     setItems((prev) => prev.filter((i) => i.id !== id));
     setSelected(null);
@@ -41,8 +52,8 @@ export default function ClosetPage() {
   return (
     <div>
       <div className="page-header">
-        <h1>Dein Schrank</h1>
-        <p>{items.length} Teile</p>
+        <h1>{greeting()}{name ? `, ${name}` : ''} 👋</h1>
+        <p>{items.length} Teile in deinem Schrank</p>
       </div>
 
       <CategoryChips value={filterCategory} onChange={setFilterCategory} includeAll />
