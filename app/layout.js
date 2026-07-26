@@ -1,5 +1,5 @@
 import './globals.css';
-import Nav from '../components/Nav';
+import AppShell from '../components/AppShell';
 
 export const metadata = {
   title: 'Mein Kleiderschrank',
@@ -10,8 +10,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="de">
       <body>
-        <Nav />
-        <main className="container">{children}</main>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

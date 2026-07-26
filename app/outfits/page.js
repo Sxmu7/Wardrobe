@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../lib/db';
 import { itemsMatch } from '../../lib/color';
-import { categoryLabel } from '../../lib/constants';
+import { categoryLabel, SEASON_OPTIONS } from '../../lib/constants';
 
 function getSlotsForSeed(seedCategory) {
   const isKleid = seedCategory === 'kleid';
@@ -33,14 +33,19 @@ function generateOutfit(seed, allItems) {
     const pick = pickForSlot(candidates, chosen);
     if (pick) chosen.push(pick); else if (slot.required) missing.push(slot.label);
   }
-  return { items: chosen, missing };
+  const totalSlots = slots.length + 1;
+  const filled = chosen.length;
+  const allSameFamilyOrNeutral = chosen.every((i) => i.isNeutral || i.colorFamily === seed.colorFamily);
+  const score = Math.min(99, Math.round(58 + (filled / totalSlots) * 32 + (allSameFamilyOrNeutral ? 9 : 0)));
+  return { items: chosen, missing, score };
 }
 
 export default function OutfitsPage() {
   const [items, setItems] = useState([]);
   const [outfits, setOutfits] = useState([]);
   const [seedId, setSeedId] = useState('');
-  const [generated, setGenerated] = useState(null);
+  const [season, setSeason] = useState('alle');
+  const [suggestions, setSuggestions] = useState([]);
   const [outfitName, setOutfitName] = useState('');
 
   useEffect(() => { load(); }, []);
@@ -53,31 +58,37 @@ export default function OutfitsPage() {
     if (all.length) setSeedId((prev) => prev || all[0].id);
   }
 
-  const seed = items.find((i) => i.id === seedId);
+  const seasonFiltered = useMemo(() => {
+    if (season === 'alle') return items;
+    return items.filter((i) => !i.season || i.season.length === 0 || i.season.includes(season));
+  }, [items, season]);
+
+  const seed = seasonFiltered.find((i) => i.id === seedId) || items.find((i) => i.id === seedId);
 
   const compatible = useMemo(() => {
     if (!seed) return {};
     const groups = {};
-    items.filter((i) => i.id !== seed.id && itemsMatch(seed, i)).forEach((i) => {
+    seasonFiltered.filter((i) => i.id !== seed.id && itemsMatch(seed, i)).forEach((i) => {
       groups[i.category] = groups[i.category] || [];
       groups[i.category].push(i);
     });
     return groups;
-  }, [seed, items]);
+  }, [seed, seasonFiltered]);
 
   function reroll() {
     if (!seed) return;
-    setGenerated(generateOutfit(seed, items));
+    const a = generateOutfit(seed, seasonFiltered);
+    const b = generateOutfit(seed, seasonFiltered);
+    setSuggestions([a, b]);
   }
 
-  useEffect(() => { if (seed) reroll(); /* eslint-disable-next-line */ }, [seedId, items.length]);
+  useEffect(() => { if (seed) reroll(); /* eslint-disable-next-line */ }, [seedId, season, items.length]);
 
-  async function saveOutfit() {
-    if (!generated) return;
+  async function saveOutfit(suggestion) {
     const outfit = {
       id: crypto.randomUUID(),
       name: outfitName || `Outfit mit ${seed.subtype || categoryLabel(seed.category)}`,
-      itemIds: generated.items.map((i) => i.id),
+      itemIds: suggestion.items.map((i) => i.id),
       createdAt: Date.now(),
     };
     await db.addOutfit(outfit);
@@ -91,31 +102,61 @@ export default function OutfitsPage() {
   }
 
   if (items.length === 0) {
-    return <div className="empty">Fuege zuerst Kleidungsstuecke in deinem Kleiderschrank hinzu.</div>;
+    return <div className="empty">Fuege zuerst Kleidungsstuecke in deinem Schrank hinzu.</div>;
   }
+
+  const topScore = suggestions.length ? Math.max(...suggestions.map((s) => s.score)) : null;
 
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1>Outfit-Generator</h1>
-          <p>Waehle ein Teil - die App zeigt dir, was farblich dazu passt.</p>
-        </div>
+        <h1>Kombinieren</h1>
+        <p>Waehle ein Teil - wir zeigen passende Kombinationen.</p>
       </div>
 
-      <div className="field select-seed">
-        <label>Basis-Teil</label>
-        <select value={seedId} onChange={(e) => setSeedId(e.target.value)}>
-          {items.map((i) => (
-            <option key={i.id} value={i.id}>
-              {(i.subtype || categoryLabel(i.category))} - {i.colorLabel} ({categoryLabel(i.category)})
-            </option>
-          ))}
-        </select>
+      {topScore !== null && (
+        <div className="top-badge-wrap">
+          <span className="top-badge">Top-Match {topScore}%</span>
+        </div>
+      )}
+
+      <div className="outfit-strip" style={{ marginBottom: 16 }}>
+        {items.map((i) => (
+          <div
+            key={i.id}
+            onClick={() => setSeedId(i.id)}
+            style={{
+              flex: 'none', cursor: 'pointer', textAlign: 'center', width: 90,
+              opacity: seed && seed.id === i.id ? 1 : 0.55,
+            }}
+          >
+            <img
+              src={i.image}
+              alt={i.subtype || ''}
+              style={{
+                width: 90, height: 116, objectFit: 'cover', borderRadius: 10,
+                border: seed && seed.id === i.id ? '2px solid var(--accent)' : '1px solid var(--border)',
+              }}
+            />
+            <div className="card-sub" style={{ marginTop: 4, justifyContent: 'center' }}>{i.subtype || categoryLabel(i.category)}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pill-row">
+        <button type="button" className={'pill' + (season === 'alle' ? ' active' : '')} onClick={() => setSeason('alle')}>Alle</button>
+        {SEASON_OPTIONS.map((s) => (
+          <button key={s} type="button" className={'pill' + (season === s.toLowerCase() ? ' active' : '')}
+            onClick={() => setSeason(s.toLowerCase())}>{s}</button>
+        ))}
       </div>
 
       {seed && (
         <>
+          <div className="row" style={{ marginBottom: 20 }}>
+            <button className="btn btn-block" onClick={reroll}>🔀 Neu mischen</button>
+          </div>
+
           <div className="section">
             <div className="section-title">Alles, was zu {seed.subtype || categoryLabel(seed.category)} passt</div>
             {Object.keys(compatible).length === 0 ? (
@@ -133,25 +174,28 @@ export default function OutfitsPage() {
           </div>
 
           <div className="section">
-            <div className="section-title">Outfit-Vorschlag</div>
-            {generated && (
-              <div className="outfit-card">
+            <div className="section-title">Vorschlaege</div>
+            <div className="field">
+              <input type="text" placeholder="Name fuer gespeicherte Outfits (optional)"
+                value={outfitName} onChange={(e) => setOutfitName(e.target.value)} />
+            </div>
+            {suggestions.map((s, idx) => (
+              <div key={idx} className="outfit-card">
+                <div className="outfit-card-head">
+                  <strong>Vorschlag {idx + 1}</strong>
+                  <span className="card-sub">{s.score}% Match</span>
+                </div>
                 <div className="outfit-strip">
-                  {generated.items.map((i) => <img key={i.id} src={i.image} title={i.subtype} alt={i.subtype || ''} />)}
+                  {s.items.map((i) => <img key={i.id} src={i.image} title={i.subtype} alt={i.subtype || ''} />)}
                 </div>
-                {generated.missing.length > 0 && (
-                  <p className="card-sub" style={{ marginTop: 8 }}>
-                    Fehlt noch in deinem Schrank: {generated.missing.join(', ')}
-                  </p>
+                {s.missing.length > 0 && (
+                  <p className="card-sub" style={{ marginTop: 8 }}>Fehlt noch: {s.missing.join(', ')}</p>
                 )}
-                <div className="row" style={{ marginTop: 14 }}>
-                  <button className="btn" onClick={reroll}>Neu mischen</button>
-                  <input type="text" placeholder="Name fuer dieses Outfit (optional)"
-                    value={outfitName} onChange={(e) => setOutfitName(e.target.value)} />
-                  <button className="btn btn-primary" onClick={saveOutfit}>Outfit speichern</button>
-                </div>
+                <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={() => saveOutfit(s)}>
+                  Als Outfit speichern
+                </button>
               </div>
-            )}
+            ))}
           </div>
         </>
       )}

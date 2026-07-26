@@ -1,15 +1,14 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { db } from '../lib/db';
-import { CATEGORIES } from '../lib/constants';
 import ItemCard from '../components/ItemCard';
-import UploadFlow from '../components/UploadFlow';
 import ItemDetail from '../components/ItemDetail';
+import CategoryChips from '../components/CategoryChips';
 
 export default function ClosetPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showUpload, setShowUpload] = useState(false);
   const [selected, setSelected] = useState(null);
   const [filterCategory, setFilterCategory] = useState('alle');
 
@@ -20,12 +19,6 @@ export default function ClosetPage() {
     const all = await db.getItems();
     setItems(all.sort((a, b) => b.createdAt - a.createdAt));
     setLoading(false);
-  }
-
-  async function handleNewItem(item, isLast) {
-    await db.addItem(item);
-    setItems((prev) => [item, ...prev]);
-    if (isLast) setShowUpload(false);
   }
 
   async function handleDelete(id) {
@@ -48,31 +41,25 @@ export default function ClosetPage() {
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1>Kleiderschrank</h1>
-          <p>{items.length} Teile in deiner Sammlung</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => setShowUpload(true)}>+ Teil hinzufuegen</button>
+        <h1>Dein Schrank</h1>
+        <p>{items.length} Teile</p>
       </div>
 
-      <div className="field select-seed" style={{ marginBottom: 20 }}>
-        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-          <option value="alle">Alle Kategorien</option>
-          {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-        </select>
-      </div>
+      <CategoryChips value={filterCategory} onChange={setFilterCategory} includeAll />
 
       {loading ? (
-        <p>Lade...</p>
+        <p className="card-sub">Lade...</p>
       ) : filtered.length === 0 ? (
-        <div className="empty">Noch keine Kleidungsstuecke. Lade dein erstes Foto hoch!</div>
+        <div className="empty">
+          Noch keine Kleidungsstuecke.<br />
+          <Link href="/add" className="btn btn-primary" style={{ marginTop: 14, display: 'inline-flex' }}>+ Teil hinzufuegen</Link>
+        </div>
       ) : (
-        <div className="grid">
+        <div className="grid-2">
           {filtered.map((item) => <ItemCard key={item.id} item={item} onClick={setSelected} />)}
         </div>
       )}
 
-      {showUpload && <UploadFlow onDone={handleNewItem} onCancel={() => setShowUpload(false)} />}
       {selected && <ItemDetail item={selected} onClose={() => setSelected(null)} onSave={handleSave} onDelete={handleDelete} />}
     </div>
   );
