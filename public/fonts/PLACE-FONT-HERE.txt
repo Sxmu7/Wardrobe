@@ -1,0 +1,12 @@
+Lege hier deine Datei "Agraham.otf" ab, sodass der volle Pfad lautet:
+
+public/fonts/Agraham.otf
+
+Das CSS (app/globals.css) erwartet die Schrift genau unter diesem Pfad
+(@font-face -> url('/fonts/Agraham.otf')).
+
+Ich konnte die Datei nicht automatisch hierher kopieren, da meine Sandbox-Shell
+in dieser Session nicht laeuft und Font-Dateien als Binaerdateien nicht ueber
+die Text-Tools verschoben werden koennen. Bitte kopiere sie manuell von deinem
+Downloads-/Uploads-Ordner in diesen Ordner (public/fonts/), dann kannst du
+diese Platzhalter-Datei loeschen.

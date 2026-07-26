@@ -1,6 +1,6 @@
-# Mein Kleiderschrank
+# MyClo
 
-Next.js-App: digitaler Kleiderschrank mit KI-Erkennung (Anthropic Vision), Outfit-Generator, Onboarding (DE/EN/ES) und einem simulierten Freunde-Feed mit Likes (ohne Login).
+Next.js-App: digitaler Kleiderschrank mit KI-Erkennung (Anthropic Vision) oder manueller Eingabe, Trage-Zähler, Outfit-Moodboard-Generator, Onboarding (DE/EN/ES) und einer simulierten Community mit Likes (ohne Login). Designed and developed by SXMU.
 
 ## Wichtig: Datenbank einrichten (einmalig, in Vercel)
 
@@ -52,15 +52,23 @@ Wichtiger Hinweis: Da es keine Passwort-Authentifizierung gibt, kann sich techni
 
 ## Struktur
 
-- `app/` – Next.js App Router Seiten: `/` Schrank, `/add` Teil hinzufügen (Schritt-Assistent), `/outfits` Kombinieren (Matcher), `/gallery` Outfits-Feed (Freunde + Likes), `/profil` Profil/Statistiken/Dark-Mode/Profilwechsel/API-Key
+- `app/` – Next.js App Router Seiten: `/` Schrank (Begrüßung, Wetter, Outfit für heute, Favoriten, Kategorien), `/add` Teil hinzufügen (Foto → animierte KI-Analyse → 1 Bestätigungsseite, oder komplett manuell ohne KI), `/outfits` Kombinieren (Moodboard-Generator mit Teil-Austausch, Speichern, Heute-getragen, Teilen), `/gallery` Community-Feed (vertikal, Likes), `/profil` Profil/Statistiken/Dark-Mode/Profilwechsel/API-Key/PayPal-Support
 - `app/api/analyze/route.js` – Server-Route, die Bilder zur KI-Analyse an Anthropic weiterleitet
 - `app/api/profiles/route.js` – Profile auflisten/erstellen (Postgres)
 - `app/api/outfit-photos/route.js` – Geteilte Outfit-Fotos auflisten/erstellen/löschen (Postgres)
 - `app/api/outfit-photos/like/route.js` – Like togglen (Postgres)
 - `lib/pgdb.js` – Postgres-Datenlayer (Schema wird automatisch angelegt)
-- `lib/db.js` – IndexedDB-Datenlayer (nur Kleidungsstücke & lokal gespeicherte Outfit-Kombinationen, geräte-lokal)
+- `lib/db.js` – IndexedDB-Datenlayer (Kleidungsstücke inkl. Trage-Zähler/Favoriten & lokal gespeicherte Outfit-Kombinationen, geräte-lokal)
 - `lib/color.js`, `lib/image.js`, `lib/ai.js` – Farb-Matching, Bild-Resizing, KI-Client
-- `lib/i18n.js`, `lib/theme.js`, `lib/profile.js` – Onboarding-Übersetzungen, Dark-Mode, Profil-Verwaltung
-- `components/` – AppShell, Onboarding, BottomNav, CategoryChips, Item-Karten/-Detail
+- `lib/constants.js` – Kategorien, Farb-Swatches (Picker statt Hex-Eingabe), Fit/Muster/Saison-Optionen
+- `lib/outfitEngine.js` – gemeinsame Outfit-Matching-Logik (Slots, Scoring) für Startseite & Kombinieren-Seite
+- `lib/weather.js` – Live-Wetter (Open-Meteo, ohne API-Key) mit Kalender-Fallback für die Saison-Empfehlung
+- `lib/share.js` – setzt mehrere Kleidungsstück-Fotos zu einem Bild zusammen, um ein Outfit als Foto zu teilen
+- `lib/i18n.js`, `lib/theme.js`, `lib/profile.js` – Onboarding-Übersetzungen, Dark-Mode (Standard: hell), Profil-Verwaltung
+- `components/` – AppShell, Splash (Typewriter-Logo), Onboarding, BottomNav (Schrank/Kombinieren/+/Community/Profil), Item-Karten/-Detail
 
-Kleidungsstücke und lokal generierte Outfit-Kombinationen bleiben geräte-lokal (IndexedDB). Geteilte Outfit-**Fotos** (die man bewusst hochlädt) sowie Profile und Likes liegen in der zentralen Postgres-Datenbank, damit der Freunde-Feed funktioniert.
+Kleidungsstücke, Trage-Zähler, Favoriten und lokal generierte Outfit-Kombinationen bleiben geräte-lokal (IndexedDB). Geteilte Outfit-**Fotos** (die man bewusst hochlädt oder aus dem Moodboard teilt) sowie Profile und Likes liegen in der zentralen Postgres-Datenbank, damit die Community funktioniert.
+
+## Eigene Schriftart (optional)
+
+`app/globals.css` bindet optional die Schriftart "Agraham" per `@font-face` ein (Pfad `public/fonts/Agraham.otf`). Die Datei muss manuell in `public/fonts/` abgelegt werden. **Hinweis zur Lizenz:** Die mitgelieferte Lizenz von Agraham erlaubt laut Hersteller nur die private, nicht-kommerzielle Nutzung ("FREE FOR PERSONAL USE ONLY. NO COMMERCIAL USE ALLOWED!"). Da MyClo unter eigenem Markennamen (SXMU) läuft und einen PayPal-Spendenlink enthält, lohnt sich vor einem echten Launch ein Blick auf die kommerzielle Lizenz des Herstellers.
