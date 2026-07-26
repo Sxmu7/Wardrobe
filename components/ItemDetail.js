@@ -23,6 +23,10 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
     setEditing(false);
   }
 
+  function logWorn() {
+    onSave({ ...item, wornCount: (item.wornCount || 0) + 1, lastWornAt: Date.now() });
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -35,6 +39,15 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
             <p>Muster: {item.pattern || '-'} - Material: {item.material || '-'}</p>
             <p>Saison: {(item.season || []).join(', ') || '-'}</p>
             {item.notes && <p>Notiz: {item.notes}</p>}
+
+            <div className="stat-box" style={{ marginBottom: 16 }}>
+              <div className="stat-num">{item.wornCount || 0}×</div>
+              <div className="stat-label">getragen</div>
+              <button className="btn btn-primary btn-block" style={{ marginTop: 10 }} onClick={logWorn}>
+                👕 Heute getragen
+              </button>
+            </div>
+
             <div className="row">
               <button className="btn" onClick={() => setEditing(true)}>Bearbeiten</button>
               <button className="btn btn-danger" onClick={() => onDelete(item.id)}>Loeschen</button>

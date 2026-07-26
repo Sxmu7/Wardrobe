@@ -2,8 +2,8 @@ import './globals.css';
 import AppShell from '../components/AppShell';
 
 export const metadata = {
-  title: 'Mein Kleiderschrank',
-  description: 'Digitaler Kleiderschrank mit KI-Erkennung und Outfit-Generator',
+  title: 'MyClo',
+  description: 'MyClo – dein intelligenter, digitaler Kleiderschrank mit KI-Erkennung und Outfit-Matching',
 };
 
 export default function RootLayout({ children }) {

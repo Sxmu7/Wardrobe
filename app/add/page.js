@@ -36,6 +36,23 @@ export default function AddItemPage() {
     setDataUrl(url);
   }
 
+  async function handleManual() {
+    if (!dataUrl) return;
+    setAnalyzing(true);
+    setAiError('');
+    try {
+      const dom = await getDominantColor(dataUrl);
+      const cls = classifyColor(dom.r, dom.g, dom.b);
+      updateDraft({
+        colorHex: dom.hex, colorLabel: cls.label, colorFamily: cls.family, colorHue: cls.hue, isNeutral: cls.isNeutral,
+        uncertain: ['size', 'fit', 'subtype', 'pattern', 'season', 'material'],
+      });
+      setStep(2);
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   async function handleAnalyze() {
     if (!dataUrl) return;
     setAnalyzing(true);
@@ -86,6 +103,7 @@ export default function AddItemPage() {
       image: dataUrl,
       ...draft,
       colorFamily, colorHue, isNeutral,
+      wornCount: 0,
       createdAt: Date.now(),
     };
     await db.addItem(item);
@@ -135,7 +153,11 @@ export default function AddItemPage() {
 
           <button className="btn btn-primary btn-block" style={{ marginTop: 16 }}
             onClick={handleAnalyze} disabled={!dataUrl || analyzing}>
-            {analyzing ? 'Analysiere...' : 'Analysieren'}
+            {analyzing ? 'Analysiere...' : '✨ Mit KI analysieren'}
+          </button>
+          <button className="btn btn-block" style={{ marginTop: 10 }}
+            onClick={handleManual} disabled={!dataUrl || analyzing}>
+            Ohne KI manuell eintragen
           </button>
         </div>
       )}

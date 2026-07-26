@@ -255,6 +255,70 @@ a { color: inherit; }
 
 .section-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
 
+/* ---------- Splash / Top bar ---------- */
+@keyframes splashLogoIn {
+  0% { opacity: 0; transform: scale(.82); letter-spacing: -0.04em; }
+  100% { opacity: 1; transform: scale(1); letter-spacing: -0.02em; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.94) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.splash {
+  position: fixed; inset: 0; z-index: 200; background: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+}
+.splash-logo {
+  font-size: 42px; font-weight: 900; color: var(--bg); letter-spacing: -0.02em;
+  animation: splashLogoIn .6s cubic-bezier(.2,.9,.25,1) both;
+}
+.splash-tagline {
+  font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--bg); opacity: 0; transition: opacity .6s ease, transform .6s ease; transform: translateY(6px);
+}
+.splash-tagline.show { opacity: .7; transform: translateY(0); }
+
+.top-bar {
+  max-width: 480px; margin: 0 auto; padding: 14px 18px 0;
+  display: flex; align-items: center;
+}
+.top-bar-logo { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; color: var(--muted); }
+
+.fade-in { animation: fadeIn .35s ease both; }
+
+/* ---------- Animation polish ---------- */
+.btn, .pill, .chip, .bottom-nav-fab, .bottom-nav-item, .btn-mono, .btn-mono-outline {
+  transition: transform .12s ease, opacity .12s ease, background .15s ease, border-color .15s ease, color .15s ease;
+}
+.btn:active, .pill:active, .chip:active, .btn-mono:active, .btn-mono-outline:active { transform: scale(.96); }
+.bottom-nav-fab:active { transform: scale(.9); }
+.bottom-nav-fab { transition: transform .15s cubic-bezier(.3,1.5,.5,1); }
+
+.card {
+  transition: transform .15s ease, box-shadow .15s ease;
+  animation: scaleIn .3s ease both;
+}
+.card:active { transform: scale(.97); }
+
+.outfit-card, .stat-box { animation: slideUp .3s ease both; }
+
+.modal-overlay {
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  animation: fadeIn .2s ease both;
+}
+.modal { animation: scaleIn .25s cubic-bezier(.2,.9,.25,1) both; }
+
+.progress-fill, .bar-fill, .step-dot { transition: width .3s ease, background .2s ease; }
+
 @media (max-width: 380px) {
   .modal { padding: 16px; }
 }

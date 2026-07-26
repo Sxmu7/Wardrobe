@@ -2,27 +2,34 @@
 import { useEffect, useState } from 'react';
 import BottomNav from './BottomNav';
 import Onboarding from './Onboarding';
+import Splash from './Splash';
+import TopBar from './TopBar';
 import { getStoredTheme, applyTheme } from '../lib/theme';
 
 export default function AppShell({ children }) {
-  const [ready, setReady] = useState(false);
-  const [onboardingDone, setOnboardingDone] = useState(false);
+  const [phase, setPhase] = useState('splash'); // splash -> onboarding -> app
 
   useEffect(() => {
     applyTheme(getStoredTheme());
-    setOnboardingDone(localStorage.getItem('kleiderschrank_onboarding_done') === '1');
-    setReady(true);
   }, []);
 
-  if (!ready) return null;
+  function handleSplashDone() {
+    const done = localStorage.getItem('kleiderschrank_onboarding_done') === '1';
+    setPhase(done ? 'app' : 'onboarding');
+  }
 
-  if (!onboardingDone) {
-    return <Onboarding onComplete={() => setOnboardingDone(true)} />;
+  if (phase === 'splash') {
+    return <Splash onDone={handleSplashDone} />;
+  }
+
+  if (phase === 'onboarding') {
+    return <Onboarding onComplete={() => setPhase('app')} />;
   }
 
   return (
     <>
-      <main className="container">{children}</main>
+      <TopBar />
+      <main className="container fade-in">{children}</main>
       <BottomNav />
     </>
   );

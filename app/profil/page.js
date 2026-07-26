@@ -176,7 +176,19 @@ export default function ProfilPage() {
         {saved && <span style={{ marginLeft: 12, color: 'var(--success)' }}>Gespeichert ✓</span>}
       </div>
 
-      <p className="card-sub" style={{ textAlign: 'center' }}>Kleiderschrank · KI-gestuetztes Outfit-Matching</p>
+      <div className="section">
+        <a
+          href="https://www.paypal.com/pool/9relvBFqEb?sr=wccr"
+          target="_blank"
+          rel="noreferrer"
+          className="btn-mono-outline"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+        >
+          💛 MyClo unterstuetzen (PayPal)
+        </a>
+      </div>
+
+      <p className="card-sub" style={{ textAlign: 'center' }}>MyClo · designed and developed by SXMU</p>
     </div>
   );
 }

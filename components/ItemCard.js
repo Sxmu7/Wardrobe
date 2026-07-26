@@ -11,6 +11,7 @@ export default function ItemCard({ item, onClick }) {
           <span className="swatch" style={{ background: item.colorHex || '#ccc' }} />
           {item.colorLabel || ''} {item.size ? ('- ' + item.size) : ''}
         </p>
+        {item.wornCount > 0 && <p className="card-sub">👕 {item.wornCount}× getragen</p>}
       </div>
     </div>
   );
