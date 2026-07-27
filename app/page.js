@@ -8,6 +8,7 @@ import { CATEGORIES, categoryLabel } from '../lib/constants';
 import { getCurrentProfileName } from '../lib/profile';
 import { generateOutfit } from '../lib/outfitEngine';
 import { getLiveWeather, calendarSeason } from '../lib/weather';
+import { IconSearch } from '../components/Icons';
 
 function greeting() {
   const h = new Date().getHours();
@@ -18,12 +19,20 @@ function greeting() {
 }
 
 const SEASON_LABEL = { winter: 'Winter', fruehling: 'Fruehling', sommer: 'Sommer', herbst: 'Herbst' };
+const SORT_OPTIONS = [
+  { key: 'neueste', label: 'Neueste' },
+  { key: 'meistgetragen', label: 'Meistgetragen' },
+  { key: 'zuletzt', label: 'Zuletzt getragen' },
+  { key: 'favoriten', label: 'Favoriten zuerst' },
+];
 
 export default function ClosetPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [filterCategory, setFilterCategory] = useState('alle');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('neueste');
   const [name, setName] = useState('');
   const [weather, setWeather] = useState(null);
   const [todayOutfit, setTodayOutfit] = useState(null);
@@ -37,13 +46,16 @@ export default function ClosetPage() {
   async function load() {
     setLoading(true);
     const all = await db.getItems();
-    setItems(all.sort((a, b) => b.createdAt - a.createdAt));
+    const active = all.filter((i) => !i.trashedAt);
+    setItems(active.sort((a, b) => b.createdAt - a.createdAt));
     setLoading(false);
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Dieses Teil wirklich loeschen?')) return;
-    await db.deleteItem(id);
+    if (!window.confirm('In den Papierkorb verschieben? Du kannst das Teil dort 30 Tage lang wiederherstellen.')) return;
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    await db.addItem({ ...item, trashedAt: Date.now() });
     setItems((prev) => prev.filter((i) => i.id !== id));
     setSelected(null);
   }
@@ -83,9 +95,23 @@ export default function ClosetPage() {
   }
 
   const filtered = useMemo(() => {
-    if (filterCategory === 'alle') return items;
-    return items.filter((i) => i.category === filterCategory);
-  }, [items, filterCategory]);
+    let list = filterCategory === 'alle' ? items : items.filter((i) => i.category === filterCategory);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((i) =>
+        (i.subtype || '').toLowerCase().includes(q) ||
+        (i.brand || '').toLowerCase().includes(q) ||
+        (i.colorLabel || '').toLowerCase().includes(q) ||
+        categoryLabel(i.category).toLowerCase().includes(q)
+      );
+    }
+    const sorted = [...list];
+    if (sortBy === 'meistgetragen') sorted.sort((a, b) => (b.wornCount || 0) - (a.wornCount || 0));
+    else if (sortBy === 'zuletzt') sorted.sort((a, b) => (b.lastWornAt || 0) - (a.lastWornAt || 0));
+    else if (sortBy === 'favoriten') sorted.sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
+    else sorted.sort((a, b) => b.createdAt - a.createdAt);
+    return sorted;
+  }, [items, filterCategory, search, sortBy]);
 
   return (
     <div>
@@ -174,11 +200,29 @@ export default function ClosetPage() {
               </span>
               {filterCategory !== 'alle' && <a onClick={() => setFilterCategory('alle')} style={{ cursor: 'pointer' }}>Alle anzeigen</a>}
             </div>
-            <div className="grid-2">
-              {filtered.map((item) => (
-                <ItemCard key={item.id} item={item} onClick={setSelected} onToggleFavorite={toggleFavorite} />
+
+            <div className="search-row">
+              <IconSearch size={16} className="search-icon" />
+              <input type="text" placeholder="Suche nach Name, Marke oder Farbe..."
+                value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+
+            <div className="pill-row">
+              {SORT_OPTIONS.map((s) => (
+                <button key={s.key} type="button" className={'pill' + (sortBy === s.key ? ' active' : '')}
+                  onClick={() => setSortBy(s.key)}>{s.label}</button>
               ))}
             </div>
+
+            {filtered.length === 0 ? (
+              <p className="card-sub">Keine Treffer.</p>
+            ) : (
+              <div className="grid-2">
+                {filtered.map((item) => (
+                  <ItemCard key={item.id} item={item} onClick={setSelected} onToggleFavorite={toggleFavorite} />
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

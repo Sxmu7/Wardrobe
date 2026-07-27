@@ -122,6 +122,13 @@ b, strong { font-weight: 700; }
 /* ---------- Pills / chips ---------- */
 .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 .filter-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
+.search-row {
+  display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 12px;
+}
+.search-row .search-icon { color: var(--muted); flex: none; }
+.search-row input { border: none; background: none; padding: 0; font-size: 14px; flex: 1; }
+.search-row input:focus { outline: none; box-shadow: none; }
 .pill {
   padding: 9px 15px; border-radius: 999px; font-size: 13px; font-weight: 500;
   border: 1px solid var(--border); background: var(--card); color: var(--ink);
@@ -338,9 +345,9 @@ b, strong { font-weight: 700; }
   font-size: 36px; margin: 0 auto 12px; color: white;
 }
 .profile-name { text-align: center; font-size: 20px; font-weight: 800; margin: 0 0 18px; }
-.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-.stat-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; box-shadow: var(--shadow-sm); }
-.stat-num { font-size: 24px; font-weight: 800; }
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.stat-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 10px; text-align: center; box-shadow: var(--shadow-sm); }
+.stat-num { font-size: 19px; font-weight: 800; }
 .stat-label { font-size: 12px; color: var(--muted); }
 
 .toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 20px; }

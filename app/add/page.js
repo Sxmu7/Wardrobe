@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { fileToResizedDataUrl } from '../../lib/image';
 import { getDominantColor, classifyColor, hexToRgb } from '../../lib/color';
 import { analyzeItemImage } from '../../lib/ai';
+import { classifyImageFree } from '../../lib/classify';
 import { CATEGORIES, FIT_OPTIONS, PATTERN_OPTIONS, SEASON_OPTIONS, COLOR_SWATCHES, categoryLabel, categoryIcon } from '../../lib/constants';
 import { db } from '../../lib/db';
 import { IconCamera, IconCheck } from '../../components/Icons';
@@ -11,7 +12,7 @@ import { IconCamera, IconCheck } from '../../components/Icons';
 function emptyDraft() {
   return {
     category: 'oberteil', subtype: '', colorHex: '#9b9b9b', colorLabel: 'Grau', colorFamily: 'grau', colorHue: 0, isNeutral: true,
-    pattern: 'uni', season: [], material: '', brand: '', size: '', fit: 'Unbekannt', notes: '', uncertain: [],
+    pattern: 'uni', season: [], material: '', brand: '', size: '', price: '', fit: 'Unbekannt', notes: '', uncertain: [],
   };
 }
 
@@ -60,37 +61,46 @@ export default function AddItemPage() {
     setChecks((c) => ({ ...c, colorHex: true }));
     await wait(300);
 
-    let aiResult = null;
     let uncertain = ['size', 'fit', 'brand'];
     const apiKey = localStorage.getItem('anthropic_api_key');
     const model = localStorage.getItem('anthropic_model');
 
     if (withAI && apiKey) {
+      // Genauere, kostenpflichtige Erkennung ueber den hinterlegten Anthropic-Key.
       try {
-        aiResult = await analyzeItemImage(dataUrl, apiKey, model);
+        const aiResult = await analyzeItemImage(dataUrl, apiKey, model);
+        updateDraft({
+          category: aiResult.category || draft.category,
+          subtype: aiResult.subtype || '',
+          pattern: aiResult.pattern || 'uni',
+          season: Array.isArray(aiResult.season) ? aiResult.season : [],
+          material: aiResult.material || '',
+          fit: aiResult.fitGuess || draft.fit,
+        });
+        if (aiResult.colorHex) {
+          const rgb = hexToRgb(aiResult.colorHex);
+          const c2 = classifyColor(rgb.r, rgb.g, rgb.b);
+          updateDraft({ colorHex: aiResult.colorHex, colorLabel: aiResult.colorNameDe || c2.label, colorFamily: c2.family, colorHue: c2.hue, isNeutral: c2.isNeutral });
+        }
+        const conf = aiResult.confidence || {};
+        Object.keys(conf).forEach((k) => { if (conf[k] < 0.6 && uncertain.indexOf(k) === -1) uncertain.push(k); });
       } catch (e) {
         setAiError(e.message + ' - bitte Angaben manuell pruefen.');
+        uncertain = uncertain.concat(['category', 'subtype', 'pattern', 'season']);
       }
-    } else if (withAI && !apiKey) {
-      setAiError('Kein API-Key hinterlegt - bitte Angaben manuell pruefen (Profil-Einstellungen).');
-    }
-
-    if (aiResult) {
-      updateDraft({
-        category: aiResult.category || draft.category,
-        subtype: aiResult.subtype || '',
-        pattern: aiResult.pattern || 'uni',
-        season: Array.isArray(aiResult.season) ? aiResult.season : [],
-        material: aiResult.material || '',
-        fit: aiResult.fitGuess || draft.fit,
-      });
-      if (aiResult.colorHex) {
-        const rgb = hexToRgb(aiResult.colorHex);
-        const c2 = classifyColor(rgb.r, rgb.g, rgb.b);
-        updateDraft({ colorHex: aiResult.colorHex, colorLabel: aiResult.colorNameDe || c2.label, colorFamily: c2.family, colorHue: c2.hue, isNeutral: c2.isNeutral });
+    } else if (withAI) {
+      // Standard: kostenlose Erkennung direkt im Browser, kein API-Key noetig.
+      try {
+        const free = await classifyImageFree(dataUrl);
+        if (free.category) updateDraft({ category: free.category });
+        if (free.subtype) updateDraft({ subtype: free.subtype });
+        uncertain = uncertain.concat(['pattern', 'season', 'material']);
+        if (!free.category || free.confidence < 0.35) uncertain = uncertain.concat(['category', 'subtype']);
+        setAiError('Kostenlose Bilderkennung (laeuft im Browser) - bitte Angaben kurz pruefen. Fuer praezisere Ergebnisse: optionaler API-Key im Profil.');
+      } catch (e) {
+        setAiError('Kostenlose Bilderkennung gerade nicht verfuegbar - bitte Angaben manuell eintragen.');
+        uncertain = uncertain.concat(['category', 'subtype', 'pattern', 'season']);
       }
-      const conf = aiResult.confidence || {};
-      Object.keys(conf).forEach((k) => { if (conf[k] < 0.6 && uncertain.indexOf(k) === -1) uncertain.push(k); });
     } else {
       uncertain = uncertain.concat(['category', 'subtype', 'pattern', 'season']);
     }
@@ -162,6 +172,9 @@ export default function AddItemPage() {
             onClick={() => runAnalysis(false)} disabled={!dataUrl}>
             Ohne KI manuell eintragen
           </button>
+          <p className="card-sub" style={{ textAlign: 'center', marginTop: 10 }}>
+            Kostenlose Bilderkennung inklusive – kein API-Key noetig. Fuer praezisere Ergebnisse kannst du optional einen Anthropic-Key im Profil hinterlegen.
+          </p>
         </div>
       )}
 
@@ -262,6 +275,12 @@ export default function AddItemPage() {
               <label>Marke</label>
               <input type="text" value={draft.brand} placeholder="optional" onChange={(e) => updateDraft({ brand: e.target.value })} />
             </div>
+          </div>
+
+          <div className="field">
+            <label>Kaufpreis (optional)</label>
+            <input type="number" inputMode="decimal" min="0" step="0.01" value={draft.price}
+              placeholder="z.B. 39.90" onChange={(e) => updateDraft({ price: e.target.value })} />
           </div>
 
           <div className="field">

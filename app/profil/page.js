@@ -1,15 +1,20 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { db } from '../../lib/db';
 import { CATEGORIES, categoryLabel } from '../../lib/constants';
 import { getCurrentProfileId, getCurrentProfileName, fetchProfiles, trySyncPendingProfile } from '../../lib/profile';
 import { getStoredTheme, setStoredTheme } from '../../lib/theme';
+import { IconTrash } from '../../components/Icons';
 
 const MODELS = [
   { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (schnell & guenstig, empfohlen)' },
   { value: 'claude-sonnet-5', label: 'Claude Sonnet 5 (genauer, teurer)' },
   { value: 'claude-opus-5', label: 'Claude Opus 5 (am genauesten, am teuersten)' },
 ];
+
+function formatEuro(n) {
+  return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
 
 export default function ProfilPage() {
   const [profileId, setProfileId] = useState(null);
@@ -18,6 +23,7 @@ export default function ProfilPage() {
 
   const [itemCount, setItemCount] = useState(0);
   const [outfitCount, setOutfitCount] = useState(0);
+  const [totalValue, setTotalValue] = useState(0);
   const [categoryCounts, setCategoryCounts] = useState({});
 
   const [dark, setDark] = useState(false);
@@ -25,6 +31,9 @@ export default function ProfilPage() {
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState(MODELS[0].value);
   const [saved, setSaved] = useState(false);
+
+  const [backupMsg, setBackupMsg] = useState('');
+  const importInputRef = useRef(null);
 
   useEffect(() => {
     setProfileId(getCurrentProfileId());
@@ -40,10 +49,12 @@ export default function ProfilPage() {
   }, []);
 
   async function loadStats() {
-    const items = await db.getItems();
+    const all = await db.getItems();
+    const items = all.filter((i) => !i.trashedAt);
     const outfits = await db.getOutfits();
     setItemCount(items.length);
     setOutfitCount(outfits.length);
+    setTotalValue(items.reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0));
     const counts = {};
     items.forEach((i) => { counts[i.category] = (counts[i.category] || 0) + 1; });
     setCategoryCounts(counts);
@@ -69,6 +80,39 @@ export default function ProfilPage() {
     setTimeout(() => setSaved(false), 2000);
   }
 
+  async function exportBackup() {
+    const data = await db.exportAll();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `myclo-backup-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setBackupMsg('Backup heruntergeladen ✓');
+    setTimeout(() => setBackupMsg(''), 3000);
+  }
+
+  async function importBackup(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const result = await db.importAll(data);
+      setBackupMsg(`${result.itemsImported} Teile & ${result.outfitsImported} Outfits importiert ✓`);
+      await loadStats();
+    } catch (err) {
+      setBackupMsg('Import fehlgeschlagen - ist das eine gueltige MyClo-Backup-Datei?');
+    } finally {
+      if (importInputRef.current) importInputRef.current.value = '';
+      setTimeout(() => setBackupMsg(''), 4000);
+    }
+  }
+
   const me = profiles.find((p) => p.id === profileId);
   const maxCat = Math.max(1, ...Object.values(categoryCounts));
 
@@ -92,6 +136,10 @@ export default function ProfilPage() {
           <div className="stat-num">{outfitCount}</div>
           <div className="stat-label">Outfits</div>
         </div>
+        <div className="stat-box">
+          <div className="stat-num">{formatEuro(totalValue)}</div>
+          <div className="stat-label">Wert</div>
+        </div>
       </div>
 
       <div className="toggle-row">
@@ -102,6 +150,10 @@ export default function ProfilPage() {
           <span className="switch-thumb" />
         </label>
       </div>
+
+      <a href="/papierkorb" className="btn btn-block" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', marginTop: 10 }}>
+        <IconTrash size={16} /> Papierkorb
+      </a>
 
       <div className="section">
         <div className="section-title">Nach Kategorie</div>
@@ -120,13 +172,26 @@ export default function ProfilPage() {
       </div>
 
       <div className="section">
+        <div className="section-title">Backup</div>
+        <p className="card-sub" style={{ marginBottom: 10 }}>
+          Deine Kleidungsstuecke liegen nur lokal in diesem Browser. Exportiere regelmaessig ein Backup, damit bei Geraetewechsel oder geloeschten Browserdaten nichts verloren geht.
+        </p>
+        <div className="row">
+          <button className="btn" onClick={exportBackup}>Exportieren</button>
+          <button className="btn" onClick={() => importInputRef.current?.click()}>Importieren</button>
+          <input ref={importInputRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={importBackup} />
+        </div>
+        {backupMsg && <p className="card-sub" style={{ marginTop: 8 }}>{backupMsg}</p>}
+      </div>
+
+      <div className="section">
         <div className="section-title">KI-Einstellungen</div>
         <div className="banner">
-          Der API-Key wird nur lokal in diesem Browser gespeichert und ausschliesslich zur Bilderkennung verwendet.
+          MyClo erkennt Kleidungsstuecke standardmaessig kostenlos direkt im Browser (kein API-Key noetig). Wenn du hier optional einen eigenen Anthropic API-Key hinterlegst, nutzt die Erkennung stattdessen die praezisere Claude-Bilderkennung. Der Key wird nur lokal gespeichert.
           Einen Key erhaeltst du unter <a href="https://console.anthropic.com" target="_blank" rel="noreferrer">console.anthropic.com</a>.
         </div>
         <div className="field">
-          <label>Anthropic API-Key</label>
+          <label>Anthropic API-Key (optional)</label>
           <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-ant-..." />
         </div>
         <div className="field">

@@ -45,6 +45,12 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
             <p>Groesse: {item.size || '-'} · Fit: {item.fit || '-'}{item.brand ? ` · ${item.brand}` : ''}</p>
             <p>Muster: {item.pattern || '-'} · Material: {item.material || '-'}</p>
             <p>Saison: {(item.season || []).join(', ') || '-'}</p>
+            {item.price && (
+              <p>
+                Kaufpreis: {parseFloat(item.price).toFixed(2)} €
+                {item.wornCount > 0 && ` · ${(parseFloat(item.price) / item.wornCount).toFixed(2)} € pro Tragen`}
+              </p>
+            )}
             {item.notes && <p>Notiz: {item.notes}</p>}
 
             <div className="stat-box" style={{ marginBottom: 16 }}>
@@ -135,6 +141,11 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
                 <label>Material</label>
                 <input type="text" value={draft.material || ''} onChange={(e) => setDraft({ ...draft, material: e.target.value })} />
               </div>
+            </div>
+            <div className="field">
+              <label>Kaufpreis (optional)</label>
+              <input type="number" inputMode="decimal" min="0" step="0.01" value={draft.price || ''}
+                placeholder="z.B. 39.90" onChange={(e) => setDraft({ ...draft, price: e.target.value })} />
             </div>
             <div className="field">
               <label>Notizen</label>
