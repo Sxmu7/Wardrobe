@@ -429,6 +429,26 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
 .hero-outfit-strip { overflow-x: visible; flex-wrap: wrap; }
 .hero-outfit-strip img { box-shadow: var(--shadow-md); border: 2.5px solid rgba(255,255,255,.92); }
 
+/* ---------- Feature-Voting (Profil) ---------- */
+.vote-list { display: flex; flex-direction: column; }
+.vote-row { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.vote-row:last-child { border-bottom: none; }
+.vote-row-body { flex: 1; min-width: 0; }
+.vote-row-title { font-size: 14.5px; font-weight: 700; margin: 0 0 3px; }
+.vote-row-desc { font-size: 12.5px; color: var(--muted); line-height: 1.4; margin: 0; }
+.vote-btn {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 52px; height: 52px; border-radius: var(--radius-sm); border: 1.5px solid var(--border);
+  background: var(--card); color: var(--ink); font-family: inherit; cursor: pointer;
+  transition: transform .3s var(--ease-spring), background .2s var(--ease-smooth), border-color .2s var(--ease-smooth), color .2s var(--ease-smooth);
+}
+.vote-btn:disabled { opacity: .5; cursor: default; }
+.vote-btn-arrow { font-size: 10px; line-height: 1; }
+.vote-btn-count { font-size: 14px; font-weight: 800; line-height: 1.1; }
+.vote-btn.voted { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+@media (hover: hover) { .vote-btn:not(.voted):not(:disabled):hover { border-color: var(--ink); } }
+.vote-btn:active { transform: scale(.92); }
+
 /* ---------- Fit-fuer-heute Baukasten (Home) ---------- */
 .fit-slot-label { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 700; color: var(--muted); margin: 0 0 10px; }
 .fit-progress-strip { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }

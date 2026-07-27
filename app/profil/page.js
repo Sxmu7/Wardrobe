@@ -8,6 +8,7 @@ import { getStoredTheme, setStoredTheme } from '../../lib/theme';
 import { IconTrash, IconMoon, IconDownload, IconUpload, IconChevronRight, IconHeart, IconSparkle } from '../../components/Icons';
 import { loadDemoItems } from '../../lib/seedData';
 import { useScrollReveal } from '../../lib/useReveal';
+import FeatureVotes from '../../components/FeatureVotes';
 
 const MODELS = [
   { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (schnell & guenstig, empfohlen)' },
@@ -253,6 +254,12 @@ export default function ProfilPage() {
           </div>
         ))}
         {Object.keys(categoryCounts).length === 0 && <p className="card-sub">Noch keine Teile im Schrank.</p>}
+      </div>
+
+      <div className="section reveal">
+        <div className="section-title">Was soll als Naechstes kommen?</div>
+        <p className="card-sub" style={{ marginBottom: 14 }}>Stimm ab, welche Funktionen als Naechstes zurueckkommen oder neu dazukommen sollen.</p>
+        <FeatureVotes profileId={profileId} />
       </div>
 
       <div className="section reveal">

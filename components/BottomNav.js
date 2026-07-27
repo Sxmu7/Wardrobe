@@ -3,12 +3,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IconPerson, IconPlus } from './Icons';
 
-// "Kombinieren" ist vorerst raus (kommt nach ein paar Updates in neuer Form zurueck).
+// "Kombinieren" und "Community" sind vorerst raus (kommen nach ein paar Updates in neuer Form zurueck).
 const LEFT = [
   { href: '/', icon: '🧺', label: 'Schrank' },
 ];
 const RIGHT = [
-  { href: '/gallery', icon: '🖼️', label: 'Community' },
   { href: '/profil', icon: <IconPerson size={20} />, label: 'Profil' },
 ];
 
