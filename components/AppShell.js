@@ -30,10 +30,12 @@ export default function AppShell({ children }) {
   }
 
   return (
-    <>
+    <div className="app-frame">
       <TopBar />
-      <main className="container fade-in">{children}</main>
+      <div className="app-scroll">
+        <main className="container fade-in">{children}</main>
+      </div>
       <BottomNav />
-    </>
+    </div>
   );
 }

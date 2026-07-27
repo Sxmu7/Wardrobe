@@ -31,6 +31,7 @@
   --sp-1: 8px; --sp-2: 16px; --sp-3: 24px; --sp-4: 32px; --sp-5: 48px; --sp-6: 64px;
 
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
 }
 
 [data-theme='dark'] {
@@ -60,8 +61,8 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { -webkit-text-size-adjust: 100%; }
-html, body { padding: 0; margin: 0; }
+html { -webkit-text-size-adjust: 100%; height: 100%; }
+html, body { padding: 0; margin: 0; overflow: hidden; overscroll-behavior: none; }
 body {
   background: var(--bg);
   color: var(--ink);
@@ -72,6 +73,25 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ---------- App-Frame: fester, bildschirmangepasster Rahmen ----------
+   Nur .app-scroll scrollt intern - kein Seiten-Scroll mehr, dadurch kein
+   Rubber-Band-/Adressleisten-Springen und die Bottom-Nav bleibt ruhig. */
+.app-frame {
+  position: fixed; inset: 0;
+  max-width: 480px; margin: 0 auto;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+.app-scroll {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 @media (min-width: 620px) {
   body {
@@ -91,15 +111,12 @@ b, strong { font-weight: 700; }
 h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
 
 .container {
-  max-width: 480px;
-  margin: 0 auto;
   padding: var(--sp-3) var(--sp-3) calc(128px + var(--safe-bottom));
-  min-height: 100vh;
 }
 
 /* ---------- Bottom nav (floating glass) ---------- */
 .bottom-nav {
-  position: fixed;
+  position: absolute;
   left: 16px; right: 16px; bottom: calc(14px + var(--safe-bottom));
   max-width: 448px;
   margin: 0 auto;
@@ -701,7 +718,8 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
 .splash-tagline.show { opacity: .7; transform: translateY(0); }
 
 .top-bar {
-  max-width: 480px; margin: 0 auto; padding: 16px 20px 0;
+  flex: none;
+  padding: calc(16px + var(--safe-top)) 20px 0;
   display: flex; align-items: center;
 }
 .top-bar-logo { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; color: var(--muted); }
