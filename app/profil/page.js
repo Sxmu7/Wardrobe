@@ -36,6 +36,7 @@ export default function ProfilPage() {
 
   const [backupMsg, setBackupMsg] = useState('');
   const [seeding, setSeeding] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const importInputRef = useRef(null);
 
   useScrollReveal([itemCount]);
@@ -108,6 +109,32 @@ export default function ProfilPage() {
     setSeeding(false);
     setBackupMsg('Beispiel-Kleidungsstuecke geladen ✓');
     setTimeout(() => setBackupMsg(''), 3000);
+  }
+
+  async function handleDeleteAccount() {
+    const sure = window.confirm(
+      'Account wirklich loeschen? Alle Kleidungsstuecke, Outfits und Fotos werden unwiderruflich geloescht. Dieser Schritt kann nicht rueckgaengig gemacht werden.'
+    );
+    if (!sure) return;
+    const reallySure = window.confirm('Letzte Warnung: Wirklich ALLE Daten dauerhaft loeschen?');
+    if (!reallySure) return;
+
+    setDeleting(true);
+    try {
+      if (profileId) {
+        try {
+          await fetch('/api/profiles', {
+            method: 'DELETE',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ id: profileId }),
+          });
+        } catch (e) {}
+      }
+      await db.clearAll();
+      localStorage.clear();
+    } finally {
+      window.location.href = '/';
+    }
   }
 
   async function importBackup(e) {
@@ -235,6 +262,16 @@ export default function ProfilPage() {
           <span className="list-row-label">MyClo unterstuetzen</span>
           <IconChevronRight size={16} className="list-row-chevron" />
         </a>
+      </div>
+
+      <div className="list-group">
+        <button type="button" className="list-row" onClick={handleDeleteAccount} disabled={deleting}>
+          <span className="list-row-icon" style={{ background: '#FF453A' }}><IconTrash size={15} /></span>
+          <span className="list-row-label" style={{ color: 'var(--danger)' }}>
+            {deleting ? 'Wird geloescht...' : 'Account loeschen & Daten bereinigen'}
+          </span>
+          <IconChevronRight size={16} className="list-row-chevron" />
+        </button>
       </div>
 
       <p className="card-sub" style={{ textAlign: 'center' }}>MyClo · designed and developed by SXMU</p>

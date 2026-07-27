@@ -2,19 +2,14 @@
 import { useState } from 'react';
 import { LANGUAGES, t } from '../lib/i18n';
 import { createProfileRemote, setCurrentProfile } from '../lib/profile';
-
-const EXPLAIN_STEPS = [
-  { emoji: '🧺', titleKey: 'step1Title', bodyKey: 'step1Body' },
-  { emoji: '🔀', titleKey: 'step2Title', bodyKey: 'step2Body' },
-  { emoji: '🖼️', titleKey: 'step3Title', bodyKey: 'step3Body' },
-];
+import ChatTutorial from './ChatTutorial';
 
 const FLAGS = { de: '🇩🇪', en: '🇬🇧', es: '🇪🇸' };
 
 export default function Onboarding({ onComplete }) {
   const [lang, setLang] = useState(null);
   const [name, setName] = useState('');
-  const [step, setStep] = useState(0); // 0 = name entry, 1..3 = explain steps
+  const [step, setStep] = useState(0); // 0 = name entry, 1 = Chat-Tutorial
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -65,7 +60,7 @@ export default function Onboarding({ onComplete }) {
     );
   }
 
-  const totalSteps = 4; // name + 3 explain steps
+  const totalSteps = 2; // name + Chat-Tutorial
   const progressPct = ((step + 1) / totalSteps) * 100;
 
   if (step === 0) {
@@ -105,9 +100,6 @@ export default function Onboarding({ onComplete }) {
     );
   }
 
-  const explain = EXPLAIN_STEPS[step - 1];
-  const isLast = step === totalSteps - 1;
-
   return (
     <div className="onboarding">
       <div className="onboarding-glow" />
@@ -118,22 +110,14 @@ export default function Onboarding({ onComplete }) {
           <span key={i} className={'step-dot' + (i === step ? ' active' : '')} />
         ))}
       </div>
-      <div className="onboarding-body" key={step}>
-        <div className="onboarding-icon-badge">{explain.emoji}</div>
-        <h1 className="onboarding-title">{t(lang, explain.titleKey)}</h1>
-        <p className="onboarding-text">{t(lang, explain.bodyKey)}</p>
-      </div>
-      <div className="onboarding-actions">
-        {isLast ? (
-          <button className="btn-mono" onClick={finish}>{t(lang, 'getStarted')}</button>
-        ) : (
-          <button className="btn-mono" onClick={() => setStep(step + 1)}>{t(lang, 'continue')}</button>
-        )}
-        {!isLast && (
-          <button className="btn-mono-outline" onClick={finish}>{t(lang, 'skip')}</button>
-        )}
-      </div>
-      <div className="onboarding-footer">MyClo · designed and developed by SXMU</div>
+      <ChatTutorial
+        messages={t(lang, 'chat')}
+        online={t(lang, 'chatOnline')}
+        typingLabel={t(lang, 'chatTyping')}
+        onDone={finish}
+        doneLabel={t(lang, 'getStarted')}
+      />
+      <button className="btn-mono-outline" onClick={finish} style={{ marginTop: 10, flex: 'none' }}>{t(lang, 'skip')}</button>
     </div>
   );
 }
