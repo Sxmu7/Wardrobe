@@ -32,28 +32,41 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <img className="preview-img" src={item.image} alt={item.subtype || ''} />
         {!editing ? (
           <>
-            <div className="row" style={{ alignItems: 'flex-start', marginBottom: 4 }}>
-              <h2 style={{ margin: 0 }}>{categoryIcon(item.category)} {item.subtype || categoryLabel(item.category)}</h2>
-              <button className="fav-heart" style={{ position: 'static', boxShadow: 'none', background: 'none' }} onClick={toggleFavorite}>
+            <div className="detail-hero">
+              <img src={item.image} alt={item.subtype || ''} />
+              <button className="fav-heart detail-hero-fav" onClick={toggleFavorite}>
                 {item.isFavorite ? '♥' : '♡'}
               </button>
             </div>
-            <p><span className="swatch" style={{ background: item.colorHex }} /> {item.colorLabel} · {categoryLabel(item.category)}</p>
-            <p>Groesse: {item.size || '-'} · Fit: {item.fit || '-'}{item.brand ? ` · ${item.brand}` : ''}</p>
-            <p>Muster: {item.pattern || '-'} · Material: {item.material || '-'}</p>
-            <p>Saison: {(item.season || []).join(', ') || '-'}</p>
+
+            <p className="detail-eyebrow">{categoryIcon(item.category)} {categoryLabel(item.category)}{item.brand ? ` · ${item.brand}` : ''}</p>
+            <h2 className="detail-title">{item.subtype || categoryLabel(item.category)}</h2>
+
+            <div className="detail-meta-row">
+              <span className="detail-meta"><span className="swatch" style={{ background: item.colorHex }} /> {item.colorLabel}</span>
+              {item.size && <span className="detail-meta">Groesse {item.size}</span>}
+              {item.fit && item.fit !== 'Unbekannt' && <span className="detail-meta">{item.fit}</span>}
+            </div>
+
+            {(item.pattern || item.material || (item.season || []).length > 0) && (
+              <div className="detail-chip-row">
+                {item.pattern && <span className="chip">{item.pattern}</span>}
+                {item.material && <span className="chip">{item.material}</span>}
+                {(item.season || []).map((s) => <span key={s} className="chip">{s}</span>)}
+              </div>
+            )}
+
             {item.price && (
-              <p>
+              <p className="card-sub" style={{ marginBottom: 6 }}>
                 Kaufpreis: {parseFloat(item.price).toFixed(2)} €
                 {item.wornCount > 0 && ` · ${(parseFloat(item.price) / item.wornCount).toFixed(2)} € pro Tragen`}
               </p>
             )}
-            {item.notes && <p>Notiz: {item.notes}</p>}
+            {item.notes && <p className="card-sub">{item.notes}</p>}
 
-            <div className="stat-box" style={{ marginBottom: 16 }}>
+            <div className="stat-box" style={{ marginTop: 20, marginBottom: 16 }}>
               <div className="stat-num">{item.wornCount || 0}×</div>
               <div className="stat-label">getragen</div>
               <button className="btn btn-primary btn-block" style={{ marginTop: 10 }} onClick={logWorn}>
@@ -71,6 +84,7 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
           </>
         ) : (
           <>
+            <img className="preview-img" src={item.image} alt={item.subtype || ''} />
             <div className="field">
               <label>Kategorie</label>
               <div className="pill-row">

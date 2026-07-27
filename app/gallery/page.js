@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { fileToResizedDataUrl } from '../../lib/image';
 import { getCurrentProfileId, trySyncPendingProfile } from '../../lib/profile';
+import { IconTrash } from '../../components/Icons';
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -144,19 +145,21 @@ export default function GalleryPage() {
             <div key={p.id} className="feed-card">
               <div className="feed-head">
                 <span className="friend-avatar" style={{ background: p.avatar_color }}>{p.avatar_emoji}</span>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div className="feed-head-name">{p.profile_name}</div>
                   <div className="feed-head-date">{formatDate(p.created_at)}</div>
                 </div>
+                {p.profile_id === profileId && (
+                  <button className="feed-delete-btn" onClick={() => remove(p.id)} aria-label="Loeschen">
+                    <IconTrash size={15} />
+                  </button>
+                )}
               </div>
-              <img className="feed-img" src={p.image} alt="Outfit" />
-              <div className="feed-actions">
-                <button className={'like-btn' + (p.liked_by_me ? ' liked' : '')} onClick={() => toggleLike(p.id)}>
+              <div className="feed-img-wrap">
+                <img className="feed-img" src={p.image} alt="Outfit" />
+                <button className={'feed-like-overlay' + (p.liked_by_me ? ' liked' : '')} onClick={() => toggleLike(p.id)}>
                   {p.liked_by_me ? '❤️' : '🤍'} {p.like_count}
                 </button>
-                {p.profile_id === profileId && (
-                  <button className="btn btn-sm btn-danger" onClick={() => remove(p.id)}>Loeschen</button>
-                )}
               </div>
               {p.note && <p className="feed-note">{p.note}</p>}
             </div>

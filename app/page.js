@@ -139,13 +139,17 @@ export default function ClosetPage() {
           {todayOutfit && (
             <div className="section">
               <div className="section-title">Outfit fuer heute · {SEASON_LABEL[season]}</div>
-              <div className="outfit-card">
-                <div className="outfit-strip">
-                  {todayOutfit.items.map((i) => <img key={i.id} src={i.image} alt={i.subtype || ''} />)}
-                </div>
-                <div className="row" style={{ marginTop: 12 }}>
-                  <button className="btn" onClick={rerollToday}>🔀 Anderer Vorschlag</button>
-                  <Link href="/outfits" className="btn btn-primary">Zum Kombinieren</Link>
+              <div className="hero-outfit-card">
+                <img className="hero-outfit-bg" src={todayOutfit.items[0].image} alt="" aria-hidden="true" />
+                <div className="hero-outfit-scrim" />
+                <div className="hero-outfit-content">
+                  <div className="outfit-strip hero-outfit-strip">
+                    {todayOutfit.items.map((i) => <img key={i.id} src={i.image} alt={i.subtype || ''} />)}
+                  </div>
+                  <div className="row" style={{ marginTop: 14 }}>
+                    <button className="btn hero-glass-btn" onClick={rerollToday}>🔀 Anderer Vorschlag</button>
+                    <Link href="/outfits" className="btn btn-primary">Zum Kombinieren</Link>
+                  </div>
                 </div>
               </div>
             </div>
@@ -201,17 +205,19 @@ export default function ClosetPage() {
               {filterCategory !== 'alle' && <a onClick={() => setFilterCategory('alle')} style={{ cursor: 'pointer' }}>Alle anzeigen</a>}
             </div>
 
-            <div className="search-row">
-              <IconSearch size={16} className="search-icon" />
-              <input type="text" placeholder="Suche nach Name, Marke oder Farbe..."
-                value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
+            <div className="sticky-filters">
+              <div className="search-row">
+                <IconSearch size={16} className="search-icon" />
+                <input type="text" placeholder="Suche nach Name, Marke oder Farbe..."
+                  value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
 
-            <div className="pill-row">
-              {SORT_OPTIONS.map((s) => (
-                <button key={s.key} type="button" className={'pill' + (sortBy === s.key ? ' active' : '')}
-                  onClick={() => setSortBy(s.key)}>{s.label}</button>
-              ))}
+              <div className="pill-row">
+                {SORT_OPTIONS.map((s) => (
+                  <button key={s.key} type="button" className={'pill' + (sortBy === s.key ? ' active' : '')}
+                    onClick={() => setSortBy(s.key)}>{s.label}</button>
+                ))}
+              </div>
             </div>
 
             {filtered.length === 0 ? (
