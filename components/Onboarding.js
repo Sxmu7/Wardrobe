@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { LANGUAGES, t } from '../lib/i18n';
 import { createProfileRemote, setCurrentProfile } from '../lib/profile';
+import { lookupProfileByCode } from '../lib/sync';
+import { pullAllRemoteToLocal } from '../lib/accountSync';
 import ChatTutorial from './ChatTutorial';
 
 const FLAGS = { de: '🇩🇪', en: '🇬🇧', es: '🇪🇸' };
@@ -12,6 +14,9 @@ export default function Onboarding({ onComplete }) {
   const [step, setStep] = useState(0); // 0 = name entry, 1 = Chat-Tutorial
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showCodeLogin, setShowCodeLogin] = useState(false);
+  const [code, setCode] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   async function handleNameContinue() {
     const trimmed = name.trim();
@@ -29,6 +34,23 @@ export default function Onboarding({ onComplete }) {
     } finally {
       setSaving(false);
       setStep(1);
+    }
+  }
+
+  async function handleCodeContinue() {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    setSyncing(true);
+    setError('');
+    try {
+      const profile = await lookupProfileByCode(trimmed);
+      setCurrentProfile(profile.id, profile.name);
+      await pullAllRemoteToLocal(profile.id);
+      setStep(1);
+    } catch (e) {
+      setError(t(lang, 'accountCodeNotFound'));
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -74,27 +96,62 @@ export default function Onboarding({ onComplete }) {
             <span key={i} className={'step-dot' + (i === step ? ' active' : '')} />
           ))}
         </div>
-        <div className="onboarding-body">
-          <div className="onboarding-icon-badge">👋</div>
-          <h1 className="onboarding-title">{t(lang, 'askName')}</h1>
-          <p className="onboarding-text">{t(lang, 'nameHint')}</p>
-          <div className="field">
-            <input
-              type="text"
-              value={name}
-              placeholder={t(lang, 'namePlaceholder')}
-              onChange={(e) => setName(e.target.value)}
-              style={{ textAlign: 'center', fontSize: 16 }}
-              autoFocus
-            />
-          </div>
-          {error && <div className="banner">{error}</div>}
-        </div>
-        <div className="onboarding-actions">
-          <button className="btn-mono" onClick={handleNameContinue} disabled={!name.trim() || saving}>
-            {saving ? '...' : t(lang, 'continue')}
-          </button>
-        </div>
+        {!showCodeLogin ? (
+          <>
+            <div className="onboarding-body">
+              <div className="onboarding-icon-badge">👋</div>
+              <h1 className="onboarding-title">{t(lang, 'askName')}</h1>
+              <p className="onboarding-text">{t(lang, 'nameHint')}</p>
+              <div className="field">
+                <input
+                  type="text"
+                  value={name}
+                  placeholder={t(lang, 'namePlaceholder')}
+                  onChange={(e) => setName(e.target.value)}
+                  style={{ textAlign: 'center', fontSize: 16 }}
+                  autoFocus
+                />
+              </div>
+              {error && <div className="banner">{error}</div>}
+            </div>
+            <div className="onboarding-actions">
+              <button className="btn-mono" onClick={handleNameContinue} disabled={!name.trim() || saving}>
+                {saving ? '...' : t(lang, 'continue')}
+              </button>
+              <button className="onboarding-link" onClick={() => { setShowCodeLogin(true); setError(''); }}>
+                {t(lang, 'haveAccount')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="onboarding-body">
+              <div className="onboarding-icon-badge">🔑</div>
+              <h1 className="onboarding-title">{t(lang, 'accountCodeTitle')}</h1>
+              <div className="field">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={code}
+                  placeholder={t(lang, 'accountCodePlaceholder')}
+                  onChange={(e) => setCode(e.target.value)}
+                  style={{ textAlign: 'center', fontSize: 22, letterSpacing: 2 }}
+                  autoFocus
+                />
+              </div>
+              {syncing && <p className="onboarding-text">{t(lang, 'accountCodeSyncing')}</p>}
+              {error && <div className="banner">{error}</div>}
+            </div>
+            <div className="onboarding-actions">
+              <button className="btn-mono" onClick={handleCodeContinue} disabled={!code.trim() || syncing}>
+                {syncing ? '...' : t(lang, 'accountCodeContinue')}
+              </button>
+              <button className="onboarding-link" onClick={() => { setShowCodeLogin(false); setError(''); }}>
+                {t(lang, 'accountCodeBack')}
+              </button>
+            </div>
+          </>
+        )}
         <div className="onboarding-footer">MyClo · designed and developed by SXMU</div>
       </div>
     );

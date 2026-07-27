@@ -1,8 +1,17 @@
 export const runtime = 'nodejs';
-import { listProfiles, createProfile, deleteProfile } from '../../../lib/pgdb';
+import { listProfiles, createProfile, deleteProfile, getProfileById } from '../../../lib/pgdb';
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+    const idParam = searchParams.get('id');
+    if (idParam) {
+      const id = parseInt(idParam, 10);
+      if (!id) return Response.json({ error: 'Ungueltiger Account-Code' }, { status: 400 });
+      const profile = await getProfileById(id);
+      if (!profile) return Response.json({ error: 'Kein Account mit diesem Code gefunden' }, { status: 404 });
+      return Response.json({ profile });
+    }
     const profiles = await listProfiles();
     return Response.json({ profiles });
   } catch (e) {

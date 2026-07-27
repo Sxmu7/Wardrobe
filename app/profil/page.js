@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { db } from '../../lib/db';
 import { CATEGORIES, categoryLabel } from '../../lib/constants';
 import { getCurrentProfileId, getCurrentProfileName, fetchProfiles, trySyncPendingProfile } from '../../lib/profile';
+import { pushAllLocalToRemote } from '../../lib/accountSync';
 import { getStoredTheme, setStoredTheme } from '../../lib/theme';
 import { IconTrash, IconMoon, IconDownload, IconUpload, IconChevronRight, IconHeart, IconSparkle } from '../../components/Icons';
 import { loadDemoItems } from '../../lib/seedData';
@@ -30,6 +31,7 @@ export default function ProfilPage() {
 
   const [dark, setDark] = useState(false);
 
+  const [geminiKey, setGeminiKey] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState(MODELS[0].value);
   const [saved, setSaved] = useState(false);
@@ -37,20 +39,31 @@ export default function ProfilPage() {
   const [backupMsg, setBackupMsg] = useState('');
   const [seeding, setSeeding] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const importInputRef = useRef(null);
+
+  function copyAccountCode() {
+    if (!profileId) return;
+    navigator.clipboard?.writeText(String(profileId)).catch(() => {});
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 1600);
+  }
 
   useScrollReveal([itemCount]);
 
   useEffect(() => {
-    setProfileId(getCurrentProfileId());
+    const existingId = getCurrentProfileId();
+    setProfileId(existingId);
     setProfileName(getCurrentProfileName());
     setDark(getStoredTheme() === 'dark');
+    setGeminiKey(localStorage.getItem('gemini_api_key') || '');
     setApiKey(localStorage.getItem('anthropic_api_key') || '');
     setModel(localStorage.getItem('anthropic_model') || MODELS[0].value);
     loadStats();
     loadProfiles();
+    if (existingId) pushAllLocalToRemote();
     trySyncPendingProfile().then((synced) => {
-      if (synced) { setProfileId(synced.id); loadProfiles(); }
+      if (synced) { setProfileId(synced.id); loadProfiles(); pushAllLocalToRemote(); }
     });
   }, []);
 
@@ -80,6 +93,7 @@ export default function ProfilPage() {
   }
 
   function saveSettings() {
+    localStorage.setItem('gemini_api_key', geminiKey);
     localStorage.setItem('anthropic_api_key', apiKey);
     localStorage.setItem('anthropic_model', model);
     setSaved(true);
@@ -167,6 +181,11 @@ export default function ProfilPage() {
         {me ? me.avatar_emoji : '🙂'}
       </div>
       <p className="profile-name">{profileName || 'Du'}</p>
+      {profileId && (
+        <button type="button" className="account-code-pill" onClick={copyAccountCode}>
+          {codeCopied ? 'Kopiert ✓' : `Account-Code ${profileId} · zum Kopieren tippen`}
+        </button>
+      )}
 
       <div className="stat-grid">
         <div className="stat-box">
@@ -239,15 +258,21 @@ export default function ProfilPage() {
       <div className="section reveal">
         <div className="section-title">KI-Einstellungen</div>
         <div className="banner">
-          MyClo erkennt Kleidungsstuecke standardmaessig kostenlos direkt im Browser (kein API-Key noetig). Wenn du hier optional einen eigenen Anthropic API-Key hinterlegst, nutzt die Erkennung stattdessen die praezisere Claude-Bilderkennung. Der Key wird nur lokal gespeichert.
-          Einen Key erhaeltst du unter <a href="https://console.anthropic.com" target="_blank" rel="noreferrer">console.anthropic.com</a>.
+          MyClo erkennt Kleidungsstuecke standardmaessig kostenlos direkt im Browser (kein API-Key noetig). Fuer deutlich praezisere Ergebnisse kannst du optional einen kostenlosen Google-Gemini-Key hinterlegen - dieser wird bevorzugt genutzt. Alternativ (kostenpflichtig, am genauesten) geht auch ein Anthropic-Key. Beide Keys werden nur lokal auf deinem Geraet gespeichert, nie an uns gesendet.
         </div>
         <div className="field">
-          <label>Anthropic API-Key (optional)</label>
+          <label>Google Gemini API-Key (kostenlos, empfohlen)</label>
+          <input type="password" value={geminiKey} onChange={(e) => setGeminiKey(e.target.value)} placeholder="AIza... oder AQ...." />
+          <p className="card-sub" style={{ marginTop: 6 }}>
+            Kostenlosen Key erhaeltst du unter <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a>.
+          </p>
+        </div>
+        <div className="field">
+          <label>Anthropic API-Key (optional, kostenpflichtig)</label>
           <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-ant-..." />
         </div>
         <div className="field">
-          <label>KI-Modell</label>
+          <label>Anthropic-Modell (nur falls Anthropic-Key gesetzt)</label>
           <select value={model} onChange={(e) => setModel(e.target.value)}>
             {MODELS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>

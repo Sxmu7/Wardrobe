@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { fileToResizedDataUrl } from '../../lib/image';
 import { getDominantColor, classifyColor, hexToRgb } from '../../lib/color';
-import { analyzeItemImage } from '../../lib/ai';
+import { analyzeItemImage, analyzeItemImageGemini } from '../../lib/ai';
 import { classifyImageFree } from '../../lib/classify';
 import { CATEGORIES, FIT_OPTIONS, PATTERN_OPTIONS, SEASON_OPTIONS, COLOR_SWATCHES, categoryLabel, categoryIcon } from '../../lib/constants';
 import { db } from '../../lib/db';
@@ -62,28 +62,43 @@ export default function AddItemPage() {
     await wait(300);
 
     let uncertain = ['size', 'fit', 'brand'];
+    const geminiKey = localStorage.getItem('gemini_api_key');
+    const geminiModel = localStorage.getItem('gemini_model');
     const apiKey = localStorage.getItem('anthropic_api_key');
     const model = localStorage.getItem('anthropic_model');
 
-    if (withAI && apiKey) {
+    function applyAiResult(aiResult) {
+      updateDraft({
+        category: aiResult.category || draft.category,
+        subtype: aiResult.subtype || '',
+        pattern: aiResult.pattern || 'uni',
+        season: Array.isArray(aiResult.season) ? aiResult.season : [],
+        material: aiResult.material || '',
+        fit: aiResult.fitGuess || draft.fit,
+      });
+      if (aiResult.colorHex) {
+        const rgb = hexToRgb(aiResult.colorHex);
+        const c2 = classifyColor(rgb.r, rgb.g, rgb.b);
+        updateDraft({ colorHex: aiResult.colorHex, colorLabel: aiResult.colorNameDe || c2.label, colorFamily: c2.family, colorHue: c2.hue, isNeutral: c2.isNeutral });
+      }
+      const conf = aiResult.confidence || {};
+      Object.keys(conf).forEach((k) => { if (conf[k] < 0.6 && uncertain.indexOf(k) === -1) uncertain.push(k); });
+    }
+
+    if (withAI && geminiKey) {
+      // Standard-Upgrade: Google Gemini (kostenloser API-Key, praeziser als Offline-Modell).
+      try {
+        const aiResult = await analyzeItemImageGemini(dataUrl, geminiKey, geminiModel);
+        applyAiResult(aiResult);
+      } catch (e) {
+        setAiError(e.message + ' - bitte Angaben manuell pruefen.');
+        uncertain = uncertain.concat(['category', 'subtype', 'pattern', 'season']);
+      }
+    } else if (withAI && apiKey) {
       // Genauere, kostenpflichtige Erkennung ueber den hinterlegten Anthropic-Key.
       try {
         const aiResult = await analyzeItemImage(dataUrl, apiKey, model);
-        updateDraft({
-          category: aiResult.category || draft.category,
-          subtype: aiResult.subtype || '',
-          pattern: aiResult.pattern || 'uni',
-          season: Array.isArray(aiResult.season) ? aiResult.season : [],
-          material: aiResult.material || '',
-          fit: aiResult.fitGuess || draft.fit,
-        });
-        if (aiResult.colorHex) {
-          const rgb = hexToRgb(aiResult.colorHex);
-          const c2 = classifyColor(rgb.r, rgb.g, rgb.b);
-          updateDraft({ colorHex: aiResult.colorHex, colorLabel: aiResult.colorNameDe || c2.label, colorFamily: c2.family, colorHue: c2.hue, isNeutral: c2.isNeutral });
-        }
-        const conf = aiResult.confidence || {};
-        Object.keys(conf).forEach((k) => { if (conf[k] < 0.6 && uncertain.indexOf(k) === -1) uncertain.push(k); });
+        applyAiResult(aiResult);
       } catch (e) {
         setAiError(e.message + ' - bitte Angaben manuell pruefen.');
         uncertain = uncertain.concat(['category', 'subtype', 'pattern', 'season']);
@@ -173,7 +188,7 @@ export default function AddItemPage() {
             Ohne KI manuell eintragen
           </button>
           <p className="card-sub" style={{ textAlign: 'center', marginTop: 10 }}>
-            Kostenlose Bilderkennung inklusive – kein API-Key noetig. Fuer praezisere Ergebnisse kannst du optional einen Anthropic-Key im Profil hinterlegen.
+            Kostenlose Bilderkennung inklusive – kein API-Key noetig. Fuer praezisere Ergebnisse kannst du optional einen kostenlosen Google-Gemini-Key (oder Anthropic-Key) im Profil hinterlegen.
           </p>
         </div>
       )}

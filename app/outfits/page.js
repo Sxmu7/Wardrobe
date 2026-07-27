@@ -6,8 +6,12 @@ import { categoryLabel, SEASON_OPTIONS } from '../../lib/constants';
 import { generateOutfit, slotRole } from '../../lib/outfitEngine';
 import { compositeOutfitImage } from '../../lib/share';
 import { getCurrentProfileId, trySyncPendingProfile } from '../../lib/profile';
-import { IconShare, IconCalendar, IconFilter } from '../../components/Icons';
+import { getLiveWeather } from '../../lib/weather';
+import { suggestOutfitAI } from '../../lib/aiOutfit';
+import { IconShare, IconCalendar, IconFilter, IconSparkle } from '../../components/Icons';
 import { useScrollReveal } from '../../lib/useReveal';
+
+const OCCASIONS = ['Alltag', 'Business', 'Sport', 'Ausgehen', 'Date'];
 
 export default function OutfitsPage() {
   const [items, setItems] = useState([]);
@@ -19,8 +23,13 @@ export default function OutfitsPage() {
   const [wornFlash, setWornFlash] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
+  const [occasion, setOccasion] = useState('Alltag');
+  const [weather, setWeather] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiReasoning, setAiReasoning] = useState('');
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); getLiveWeather().then(setWeather); }, []);
   useScrollReveal([items.length, outfit]);
 
   async function load() {
@@ -43,9 +52,28 @@ export default function OutfitsPage() {
     setOutfit(generateOutfit(seed, seasonFiltered));
     setWornFlash(false);
     setShareMsg('');
+    setAiReasoning('');
+    setAiError('');
   }
 
   useEffect(() => { if (seed) reroll(); /* eslint-disable-next-line */ }, [seedId, season, items.length]);
+
+  async function askAI() {
+    setAiLoading(true);
+    setAiError('');
+    setAiReasoning('');
+    try {
+      const result = await suggestOutfitAI({ items: seasonFiltered.length ? seasonFiltered : items, weather, occasion });
+      setOutfit(result);
+      setAiReasoning(result.reasoning);
+      setWornFlash(false);
+      setShareMsg('');
+    } catch (e) {
+      setAiError(e.message);
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   function swapSlot(item) {
     if (!outfit) return;
@@ -132,9 +160,14 @@ export default function OutfitsPage() {
         <p>Waehle ein Teil - wir bauen dir ein Outfit.</p>
       </div>
 
-      {outfit && (
+      {outfit && typeof outfit.score === 'number' && (
         <div className="top-badge-wrap">
           <span className="top-badge">Top-Match {outfit.score}%</span>
+        </div>
+      )}
+      {outfit && aiReasoning && (
+        <div className="top-badge-wrap">
+          <span className="top-badge top-badge-ai"><IconSparkle size={13} /> {aiReasoning}</span>
         </div>
       )}
 
@@ -169,6 +202,16 @@ export default function OutfitsPage() {
             onClick={() => setSeason(s.toLowerCase())}>{s}</button>
         ))}
       </div>
+
+      <div className="ai-outfit-row">
+        <select className="ai-occasion-select" value={occasion} onChange={(e) => setOccasion(e.target.value)}>
+          {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <button type="button" className="btn-ai-suggest" onClick={askAI} disabled={aiLoading}>
+          <IconSparkle size={15} /> {aiLoading ? 'Denkt nach …' : 'KI-Vorschlag'}
+        </button>
+      </div>
+      {aiError && <p className="card-sub" style={{ textAlign: 'center', marginBottom: 8 }}>{aiError}</p>}
 
       {outfit && (
         <>
