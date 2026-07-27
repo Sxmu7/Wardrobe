@@ -8,32 +8,51 @@ import ChatTutorial from './ChatTutorial';
 
 const FLAGS = { de: '🇩🇪', en: '🇬🇧', es: '🇪🇸' };
 
+function buildScript(lang) {
+  return [
+    { type: 'bot', text: t(lang, 'chatGreet1') },
+    { type: 'bot', text: t(lang, 'chatGreet2') },
+    { type: 'bot', text: t(lang, 'askName') },
+    { type: 'ask-text', key: 'name', placeholder: t(lang, 'namePlaceholder') },
+    { type: 'bot', text: (a) => t(lang, 'chatAfterName').replace('{name}', a.name || '') },
+    { type: 'bot', text: t(lang, 'chatSourceQuestion') },
+    { type: 'ask-choice', key: 'source', options: t(lang, 'chatSourceOptions') },
+    { type: 'bot', text: t(lang, 'chatSourceThanks') },
+    { type: 'bot', text: t(lang, 'chatExplainIntro') },
+    { type: 'bot', text: t(lang, 'chatExplainHome') },
+    { type: 'shot', shot: 'home' },
+    { type: 'bot', text: t(lang, 'chatExplainAdd') },
+    { type: 'shot', shot: 'add' },
+    { type: 'bot', text: t(lang, 'chatExplainCombine') },
+    { type: 'shot', shot: 'combine' },
+    { type: 'bot', text: t(lang, 'chatExplainCommunity') },
+    { type: 'shot', shot: 'community' },
+    { type: 'bot', text: t(lang, 'chatReady') },
+  ];
+}
+
 export default function Onboarding({ onComplete }) {
   const [lang, setLang] = useState(null);
-  const [name, setName] = useState('');
-  const [step, setStep] = useState(0); // 0 = name entry, 1 = Chat-Tutorial
-  const [saving, setSaving] = useState(false);
+  const [view, setView] = useState('chat'); // 'chat' | 'code'
   const [error, setError] = useState('');
-  const [showCodeLogin, setShowCodeLogin] = useState(false);
   const [code, setCode] = useState('');
   const [syncing, setSyncing] = useState(false);
 
-  async function handleNameContinue() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setSaving(true);
-    setError('');
-    try {
-      const profile = await createProfileRemote(trimmed);
-      setCurrentProfile(profile.id, profile.name);
-    } catch (e) {
-      // Kein Server/DB erreichbar (z.B. Postgres noch nicht eingerichtet) -
-      // App trotzdem nutzbar machen, Freunde-Feature synct spaeter automatisch.
-      setCurrentProfile(null, trimmed);
-      localStorage.setItem('kleiderschrank_profile_pending', '1');
-    } finally {
-      setSaving(false);
-      setStep(1);
+  async function handleAnswer(key, value) {
+    if (key === 'name') {
+      const trimmed = value.trim();
+      try {
+        const profile = await createProfileRemote(trimmed);
+        setCurrentProfile(profile.id, profile.name);
+      } catch (e) {
+        // Kein Server/DB erreichbar (z.B. Postgres noch nicht eingerichtet) -
+        // App trotzdem nutzbar machen, Freunde-Feature synct spaeter automatisch.
+        setCurrentProfile(null, trimmed);
+        localStorage.setItem('kleiderschrank_profile_pending', '1');
+      }
+    }
+    if (key === 'source') {
+      try { localStorage.setItem('kleiderschrank_signup_source', value); } catch (e) {}
     }
   }
 
@@ -46,7 +65,7 @@ export default function Onboarding({ onComplete }) {
       const profile = await lookupProfileByCode(trimmed);
       setCurrentProfile(profile.id, profile.name);
       await pullAllRemoteToLocal(profile.id);
-      setStep(1);
+      finish();
     } catch (e) {
       setError(t(lang, 'accountCodeNotFound'));
     } finally {
@@ -82,76 +101,36 @@ export default function Onboarding({ onComplete }) {
     );
   }
 
-  const totalSteps = 2; // name + Chat-Tutorial
-  const progressPct = ((step + 1) / totalSteps) * 100;
-
-  if (step === 0) {
+  if (view === 'code') {
     return (
       <div className="onboarding">
         <div className="onboarding-glow" />
         <div className="onboarding-notch" />
-        <div className="progress-track"><div className="progress-fill" style={{ width: progressPct + '%' }} /></div>
-        <div className="step-dots">
-          {Array.from({ length: totalSteps }).map((_, i) => (
-            <span key={i} className={'step-dot' + (i === step ? ' active' : '')} />
-          ))}
+        <div className="onboarding-body">
+          <div className="onboarding-icon-badge">🔑</div>
+          <h1 className="onboarding-title">{t(lang, 'accountCodeTitle')}</h1>
+          <div className="field">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={code}
+              placeholder={t(lang, 'accountCodePlaceholder')}
+              onChange={(e) => setCode(e.target.value)}
+              style={{ textAlign: 'center', fontSize: 22, letterSpacing: 2 }}
+              autoFocus
+            />
+          </div>
+          {syncing && <p className="onboarding-text">{t(lang, 'accountCodeSyncing')}</p>}
+          {error && <div className="banner">{error}</div>}
         </div>
-        {!showCodeLogin ? (
-          <>
-            <div className="onboarding-body">
-              <div className="onboarding-icon-badge">👋</div>
-              <h1 className="onboarding-title">{t(lang, 'askName')}</h1>
-              <p className="onboarding-text">{t(lang, 'nameHint')}</p>
-              <div className="field">
-                <input
-                  type="text"
-                  value={name}
-                  placeholder={t(lang, 'namePlaceholder')}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{ textAlign: 'center', fontSize: 16 }}
-                  autoFocus
-                />
-              </div>
-              {error && <div className="banner">{error}</div>}
-            </div>
-            <div className="onboarding-actions">
-              <button className="btn-mono" onClick={handleNameContinue} disabled={!name.trim() || saving}>
-                {saving ? '...' : t(lang, 'continue')}
-              </button>
-              <button className="onboarding-link" onClick={() => { setShowCodeLogin(true); setError(''); }}>
-                {t(lang, 'haveAccount')}
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="onboarding-body">
-              <div className="onboarding-icon-badge">🔑</div>
-              <h1 className="onboarding-title">{t(lang, 'accountCodeTitle')}</h1>
-              <div className="field">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={code}
-                  placeholder={t(lang, 'accountCodePlaceholder')}
-                  onChange={(e) => setCode(e.target.value)}
-                  style={{ textAlign: 'center', fontSize: 22, letterSpacing: 2 }}
-                  autoFocus
-                />
-              </div>
-              {syncing && <p className="onboarding-text">{t(lang, 'accountCodeSyncing')}</p>}
-              {error && <div className="banner">{error}</div>}
-            </div>
-            <div className="onboarding-actions">
-              <button className="btn-mono" onClick={handleCodeContinue} disabled={!code.trim() || syncing}>
-                {syncing ? '...' : t(lang, 'accountCodeContinue')}
-              </button>
-              <button className="onboarding-link" onClick={() => { setShowCodeLogin(false); setError(''); }}>
-                {t(lang, 'accountCodeBack')}
-              </button>
-            </div>
-          </>
-        )}
+        <div className="onboarding-actions">
+          <button className="btn-mono" onClick={handleCodeContinue} disabled={!code.trim() || syncing}>
+            {syncing ? '...' : t(lang, 'accountCodeContinue')}
+          </button>
+          <button className="onboarding-link" onClick={() => { setView('chat'); setError(''); }}>
+            {t(lang, 'accountCodeBack')}
+          </button>
+        </div>
         <div className="onboarding-footer">MyClo · designed and developed by SXMU</div>
       </div>
     );
@@ -161,16 +140,16 @@ export default function Onboarding({ onComplete }) {
     <div className="onboarding">
       <div className="onboarding-glow" />
       <div className="onboarding-notch" />
-      <div className="progress-track"><div className="progress-fill" style={{ width: progressPct + '%' }} /></div>
-      <div className="step-dots">
-        {Array.from({ length: totalSteps }).map((_, i) => (
-          <span key={i} className={'step-dot' + (i === step ? ' active' : '')} />
-        ))}
-      </div>
+      <button className="onboarding-link" style={{ marginBottom: 6, flex: 'none' }}
+        onClick={() => { setView('code'); setError(''); }}>
+        {t(lang, 'haveAccount')}
+      </button>
       <ChatTutorial
-        messages={t(lang, 'chat')}
+        script={buildScript(lang)}
         online={t(lang, 'chatOnline')}
         typingLabel={t(lang, 'chatTyping')}
+        sendLabel={t(lang, 'chatSend')}
+        onAnswer={handleAnswer}
         onDone={finish}
         doneLabel={t(lang, 'getStarted')}
       />
