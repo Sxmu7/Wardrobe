@@ -7,6 +7,7 @@ import { generateOutfit, slotRole } from '../../lib/outfitEngine';
 import { compositeOutfitImage } from '../../lib/share';
 import { getCurrentProfileId, trySyncPendingProfile } from '../../lib/profile';
 import { IconShare, IconCalendar, IconFilter } from '../../components/Icons';
+import { useScrollReveal } from '../../lib/useReveal';
 
 export default function OutfitsPage() {
   const [items, setItems] = useState([]);
@@ -20,6 +21,7 @@ export default function OutfitsPage() {
   const [shareMsg, setShareMsg] = useState('');
 
   useEffect(() => { load(); }, []);
+  useScrollReveal([items.length, outfit]);
 
   async function load() {
     const all = await db.getItems();
@@ -170,7 +172,7 @@ export default function OutfitsPage() {
 
       {outfit && (
         <>
-          <div className="moodboard">
+          <div className="moodboard reveal">
             {rows.top.length > 0 && (
               <div className="moodboard-row">
                 {rows.top.map((i) => (
@@ -230,7 +232,7 @@ export default function OutfitsPage() {
       )}
 
       {outfits.length > 0 && (
-        <div className="section" style={{ marginTop: 24 }}>
+        <div className="section reveal" style={{ marginTop: 24 }}>
           <div className="section-title">Gespeicherte Outfits</div>
           {outfits.map((o) => (
             <div key={o.id} className="outfit-card">

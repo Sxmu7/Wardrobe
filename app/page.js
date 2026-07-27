@@ -8,7 +8,9 @@ import { CATEGORIES, categoryLabel } from '../lib/constants';
 import { getCurrentProfileName } from '../lib/profile';
 import { generateOutfit } from '../lib/outfitEngine';
 import { getLiveWeather, calendarSeason } from '../lib/weather';
-import { IconSearch } from '../components/Icons';
+import { loadDemoItems } from '../lib/seedData';
+import { useScrollReveal } from '../lib/useReveal';
+import { IconSearch, IconClose, IconSparkle } from '../components/Icons';
 
 function greeting() {
   const h = new Date().getHours();
@@ -36,6 +38,7 @@ export default function ClosetPage() {
   const [name, setName] = useState('');
   const [weather, setWeather] = useState(null);
   const [todayOutfit, setTodayOutfit] = useState(null);
+  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     load();
@@ -49,6 +52,13 @@ export default function ClosetPage() {
     const active = all.filter((i) => !i.trashedAt);
     setItems(active.sort((a, b) => b.createdAt - a.createdAt));
     setLoading(false);
+  }
+
+  async function handleLoadDemo() {
+    setSeeding(true);
+    await loadDemoItems(db);
+    await load();
+    setSeeding(false);
   }
 
   async function handleDelete(id) {
@@ -113,6 +123,10 @@ export default function ClosetPage() {
     return sorted;
   }, [items, filterCategory, search, sortBy]);
 
+  const searchActive = search.trim().length > 0;
+
+  useScrollReveal([loading, items.length, searchActive]);
+
   return (
     <div>
       <div className="page-header">
@@ -132,104 +146,135 @@ export default function ClosetPage() {
       ) : items.length === 0 ? (
         <div className="empty">
           Noch keine Kleidungsstuecke.<br />
-          <Link href="/add" className="btn btn-primary" style={{ marginTop: 14, display: 'inline-flex' }}>+ Teil hinzufuegen</Link>
+          <div className="row" style={{ marginTop: 14, justifyContent: 'center' }}>
+            <Link href="/add" className="btn btn-primary" style={{ display: 'inline-flex' }}>+ Teil hinzufuegen</Link>
+            <button className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={handleLoadDemo} disabled={seeding}>
+              <IconSparkle size={15} /> {seeding ? 'Laedt...' : 'Beispiele laden'}
+            </button>
+          </div>
         </div>
       ) : (
         <>
-          {todayOutfit && (
-            <div className="section">
-              <div className="section-title">Outfit fuer heute · {SEASON_LABEL[season]}</div>
-              <div className="hero-outfit-card">
-                <img className="hero-outfit-bg" src={todayOutfit.items[0].image} alt="" aria-hidden="true" />
-                <div className="hero-outfit-scrim" />
-                <div className="hero-outfit-content">
-                  <div className="outfit-strip hero-outfit-strip">
-                    {todayOutfit.items.map((i) => <img key={i.id} src={i.image} alt={i.subtype || ''} />)}
-                  </div>
-                  <div className="row" style={{ marginTop: 14 }}>
-                    <button className="btn hero-glass-btn" onClick={rerollToday}>🔀 Anderer Vorschlag</button>
-                    <Link href="/outfits" className="btn btn-primary">Zum Kombinieren</Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="section">
-            <div className="section-title-row">
-              <span className="section-title" style={{ marginBottom: 0 }}>Zuletzt hinzugefuegt</span>
-            </div>
-            <div className="hscroll">
-              {recent.map((i) => (
-                <div key={i.id} className="hscroll-item" onClick={() => setSelected(i)}>
-                  <img src={i.image} alt={i.subtype || ''} />
-                  <p className="card-title">{i.subtype || categoryLabel(i.category)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {favorites.length > 0 && (
-            <div className="section">
-              <div className="section-title">Deine Favoriten</div>
-              <div className="hscroll">
-                {favorites.map((i) => (
-                  <div key={i.id} className="hscroll-item" onClick={() => setSelected(i)}>
-                    <img src={i.image} alt={i.subtype || ''} />
-                    <p className="card-title">{i.subtype || categoryLabel(i.category)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="section">
-            <div className="section-title">Kategorien</div>
-            <div className="cat-tile-grid">
-              {CATEGORIES.map((c) => (
-                <button key={c.key} type="button" className="cat-tile"
-                  onClick={() => setFilterCategory(filterCategory === c.key ? 'alle' : c.key)}
-                  style={filterCategory === c.key ? { borderColor: 'var(--ink)' } : undefined}>
-                  <span className="cat-tile-icon">{c.icon}</span>
-                  {c.label}
+          <div className="sticky-filters reveal">
+            <div className="search-row">
+              <IconSearch size={16} className="search-icon" />
+              <input type="text" placeholder="Suche nach Name, Marke oder Farbe..."
+                value={search} onChange={(e) => setSearch(e.target.value)} />
+              {searchActive && (
+                <button type="button" className="search-clear" onClick={() => setSearch('')} aria-label="Suche loeschen">
+                  <IconClose size={12} />
                 </button>
-              ))}
+              )}
             </div>
           </div>
 
-          <div className="section">
-            <div className="section-title-row">
-              <span className="section-title" style={{ marginBottom: 0 }}>
-                {filterCategory === 'alle' ? 'Alles' : categoryLabel(filterCategory)}
-              </span>
-              {filterCategory !== 'alle' && <a onClick={() => setFilterCategory('alle')} style={{ cursor: 'pointer' }}>Alle anzeigen</a>}
+          {searchActive ? (
+            <div className="section reveal">
+              <div className="section-title-row">
+                <span className="section-title" style={{ marginBottom: 0 }}>
+                  {filtered.length} {filtered.length === 1 ? 'Treffer' : 'Treffer'}
+                </span>
+              </div>
+              {filtered.length === 0 ? (
+                <p className="card-sub">Keine Treffer fuer "{search}".</p>
+              ) : (
+                <div className="grid-2">
+                  {filtered.map((item) => (
+                    <ItemCard key={item.id} item={item} onClick={setSelected} onToggleFavorite={toggleFavorite} />
+                  ))}
+                </div>
+              )}
             </div>
+          ) : (
+            <>
+              {todayOutfit && (
+                <div className="section reveal">
+                  <div className="section-title">Outfit fuer heute · {SEASON_LABEL[season]}</div>
+                  <div className="hero-outfit-card">
+                    <img className="hero-outfit-bg" src={todayOutfit.items[0].image} alt="" aria-hidden="true" />
+                    <div className="hero-outfit-scrim" />
+                    <div className="hero-outfit-content">
+                      <div className="outfit-strip hero-outfit-strip">
+                        {todayOutfit.items.map((i) => <img key={i.id} src={i.image} alt={i.subtype || ''} />)}
+                      </div>
+                      <div className="row" style={{ marginTop: 14 }}>
+                        <button className="btn hero-glass-btn" onClick={rerollToday}>🔀 Anderer Vorschlag</button>
+                        <Link href="/outfits" className="btn btn-primary">Zum Kombinieren</Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-            <div className="sticky-filters">
-              <div className="search-row">
-                <IconSearch size={16} className="search-icon" />
-                <input type="text" placeholder="Suche nach Name, Marke oder Farbe..."
-                  value={search} onChange={(e) => setSearch(e.target.value)} />
+              <div className="section reveal">
+                <div className="section-title-row">
+                  <span className="section-title" style={{ marginBottom: 0 }}>Zuletzt hinzugefuegt</span>
+                </div>
+                <div className="hscroll">
+                  {recent.map((i) => (
+                    <div key={i.id} className="hscroll-item" onClick={() => setSelected(i)}>
+                      <img src={i.image} alt={i.subtype || ''} />
+                      <p className="card-title">{i.subtype || categoryLabel(i.category)}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="segmented">
-                {SORT_OPTIONS.map((s) => (
-                  <button key={s.key} type="button" className={sortBy === s.key ? 'active' : ''}
-                    onClick={() => setSortBy(s.key)}>{s.label}</button>
-                ))}
-              </div>
-            </div>
+              {favorites.length > 0 && (
+                <div className="section reveal">
+                  <div className="section-title">Deine Favoriten</div>
+                  <div className="hscroll">
+                    {favorites.map((i) => (
+                      <div key={i.id} className="hscroll-item" onClick={() => setSelected(i)}>
+                        <img src={i.image} alt={i.subtype || ''} />
+                        <p className="card-title">{i.subtype || categoryLabel(i.category)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            {filtered.length === 0 ? (
-              <p className="card-sub">Keine Treffer.</p>
-            ) : (
-              <div className="grid-2">
-                {filtered.map((item) => (
-                  <ItemCard key={item.id} item={item} onClick={setSelected} onToggleFavorite={toggleFavorite} />
-                ))}
+              <div className="section reveal">
+                <div className="section-title">Kategorien</div>
+                <div className="cat-tile-grid">
+                  {CATEGORIES.map((c) => (
+                    <button key={c.key} type="button" className="cat-tile"
+                      onClick={() => setFilterCategory(filterCategory === c.key ? 'alle' : c.key)}
+                      style={filterCategory === c.key ? { borderColor: 'var(--ink)' } : undefined}>
+                      <span className="cat-tile-icon">{c.icon}</span>
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
+
+              <div className="section reveal">
+                <div className="section-title-row">
+                  <span className="section-title" style={{ marginBottom: 0 }}>
+                    {filterCategory === 'alle' ? 'Alles' : categoryLabel(filterCategory)}
+                  </span>
+                  {filterCategory !== 'alle' && <a onClick={() => setFilterCategory('alle')} style={{ cursor: 'pointer' }}>Alle anzeigen</a>}
+                </div>
+
+                <div className="segmented">
+                  {SORT_OPTIONS.map((s) => (
+                    <button key={s.key} type="button" className={sortBy === s.key ? 'active' : ''}
+                      onClick={() => setSortBy(s.key)}>{s.label}</button>
+                  ))}
+                </div>
+
+                {filtered.length === 0 ? (
+                  <p className="card-sub">Keine Treffer.</p>
+                ) : (
+                  <div className="grid-2">
+                    {filtered.map((item) => (
+                      <ItemCard key={item.id} item={item} onClick={setSelected} onToggleFavorite={toggleFavorite} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
 

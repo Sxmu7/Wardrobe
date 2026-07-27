@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { fileToResizedDataUrl } from '../../lib/image';
 import { getCurrentProfileId, trySyncPendingProfile } from '../../lib/profile';
 import { IconTrash } from '../../components/Icons';
+import { useScrollReveal } from '../../lib/useReveal';
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -27,6 +28,8 @@ export default function GalleryPage() {
       if (id) load(id); else setLoading(false);
     })();
   }, []);
+
+  useScrollReveal([photos.length]);
 
   async function load(id) {
     setLoading(true);
@@ -143,7 +146,7 @@ export default function GalleryPage() {
       ) : (
         <div>
           {photos.map((p) => (
-            <div key={p.id} className="feed-card">
+            <div key={p.id} className="feed-card reveal">
               <div className="feed-head">
                 <span className="friend-avatar" style={{ background: p.avatar_color }}>{p.avatar_emoji}</span>
                 <div style={{ flex: 1 }}>

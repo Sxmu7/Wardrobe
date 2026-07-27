@@ -4,7 +4,9 @@ import { db } from '../../lib/db';
 import { CATEGORIES, categoryLabel } from '../../lib/constants';
 import { getCurrentProfileId, getCurrentProfileName, fetchProfiles, trySyncPendingProfile } from '../../lib/profile';
 import { getStoredTheme, setStoredTheme } from '../../lib/theme';
-import { IconTrash, IconMoon, IconDownload, IconUpload, IconChevronRight, IconHeart } from '../../components/Icons';
+import { IconTrash, IconMoon, IconDownload, IconUpload, IconChevronRight, IconHeart, IconSparkle } from '../../components/Icons';
+import { loadDemoItems } from '../../lib/seedData';
+import { useScrollReveal } from '../../lib/useReveal';
 
 const MODELS = [
   { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (schnell & guenstig, empfohlen)' },
@@ -33,7 +35,10 @@ export default function ProfilPage() {
   const [saved, setSaved] = useState(false);
 
   const [backupMsg, setBackupMsg] = useState('');
+  const [seeding, setSeeding] = useState(false);
   const importInputRef = useRef(null);
+
+  useScrollReveal([itemCount]);
 
   useEffect(() => {
     setProfileId(getCurrentProfileId());
@@ -93,6 +98,15 @@ export default function ProfilPage() {
     a.remove();
     URL.revokeObjectURL(url);
     setBackupMsg('Backup heruntergeladen ✓');
+    setTimeout(() => setBackupMsg(''), 3000);
+  }
+
+  async function handleLoadDemo() {
+    setSeeding(true);
+    await loadDemoItems(db);
+    await loadStats();
+    setSeeding(false);
+    setBackupMsg('Beispiel-Kleidungsstuecke geladen ✓');
     setTimeout(() => setBackupMsg(''), 3000);
   }
 
@@ -170,11 +184,16 @@ export default function ProfilPage() {
           <span className="list-row-label">Backup importieren</span>
           <IconChevronRight size={16} className="list-row-chevron" />
         </button>
+        <button type="button" className="list-row" onClick={handleLoadDemo} disabled={seeding}>
+          <span className="list-row-icon" style={{ background: '#AF52DE' }}><IconSparkle size={15} /></span>
+          <span className="list-row-label">{seeding ? 'Laedt...' : 'Beispiel-Kleidungsstuecke laden'}</span>
+          <IconChevronRight size={16} className="list-row-chevron" />
+        </button>
         <input ref={importInputRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={importBackup} />
       </div>
       {backupMsg && <p className="card-sub" style={{ marginTop: -14, marginBottom: 24 }}>{backupMsg}</p>}
 
-      <div className="section">
+      <div className="section reveal">
         <div className="section-title">Nach Kategorie</div>
         {CATEGORIES.filter((c) => categoryCounts[c.key]).map((c) => (
           <div className="bar-row" key={c.key}>
@@ -190,7 +209,7 @@ export default function ProfilPage() {
         {Object.keys(categoryCounts).length === 0 && <p className="card-sub">Noch keine Teile im Schrank.</p>}
       </div>
 
-      <div className="section">
+      <div className="section reveal">
         <div className="section-title">KI-Einstellungen</div>
         <div className="banner">
           MyClo erkennt Kleidungsstuecke standardmaessig kostenlos direkt im Browser (kein API-Key noetig). Wenn du hier optional einen eigenen Anthropic API-Key hinterlegst, nutzt die Erkennung stattdessen die praezisere Claude-Bilderkennung. Der Key wird nur lokal gespeichert.
