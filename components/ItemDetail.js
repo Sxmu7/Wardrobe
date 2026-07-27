@@ -45,42 +45,67 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
             <p className="detail-eyebrow">{categoryIcon(item.category)} {categoryLabel(item.category)}{item.brand ? ` · ${item.brand}` : ''}</p>
             <h2 className="detail-title">{item.subtype || categoryLabel(item.category)}</h2>
 
-            <div className="detail-meta-row">
-              <span className="detail-meta"><span className="swatch" style={{ background: item.colorHex }} /> {item.colorLabel}</span>
-              {item.size && <span className="detail-meta">Groesse {item.size}</span>}
-              {item.fit && item.fit !== 'Unbekannt' && <span className="detail-meta">{item.fit}</span>}
-            </div>
-
-            {(item.pattern || item.material || (item.season || []).length > 0) && (
-              <div className="detail-chip-row">
-                {item.pattern && <span className="chip">{item.pattern}</span>}
-                {item.material && <span className="chip">{item.material}</span>}
-                {(item.season || []).map((s) => <span key={s} className="chip">{s}</span>)}
-              </div>
-            )}
-
             {item.price && (
-              <p className="card-sub" style={{ marginBottom: 6 }}>
-                Kaufpreis: {parseFloat(item.price).toFixed(2)} €
-                {item.wornCount > 0 && ` · ${(parseFloat(item.price) / item.wornCount).toFixed(2)} € pro Tragen`}
+              <p className="shop-price">
+                {parseFloat(item.price).toFixed(2)} €
+                {item.wornCount > 0 && (
+                  <span className="shop-price-per"> · {(parseFloat(item.price) / item.wornCount).toFixed(2)} € / Tragen</span>
+                )}
               </p>
             )}
-            {item.notes && <p className="card-sub">{item.notes}</p>}
 
-            <div className="stat-box" style={{ marginTop: 20, marginBottom: 16 }}>
-              <div className="stat-num">{item.wornCount || 0}×</div>
-              <div className="stat-label">getragen</div>
-              <button className="btn btn-primary btn-block" style={{ marginTop: 10 }} onClick={logWorn}>
-                👕 Heute getragen
-              </button>
+            <div className="spec-list">
+              <div className="spec-row">
+                <span className="spec-label">Farbe</span>
+                <span className="spec-value"><span className="swatch" style={{ background: item.colorHex }} /> {item.colorLabel}</span>
+              </div>
+              {item.size && (
+                <div className="spec-row">
+                  <span className="spec-label">Groesse</span>
+                  <span className="spec-value">{item.size}</span>
+                </div>
+              )}
+              {item.fit && item.fit !== 'Unbekannt' && (
+                <div className="spec-row">
+                  <span className="spec-label">Fit</span>
+                  <span className="spec-value">{item.fit}</span>
+                </div>
+              )}
+              {item.pattern && (
+                <div className="spec-row">
+                  <span className="spec-label">Muster</span>
+                  <span className="spec-value">{item.pattern}</span>
+                </div>
+              )}
+              {item.material && (
+                <div className="spec-row">
+                  <span className="spec-label">Material</span>
+                  <span className="spec-value">{item.material}</span>
+                </div>
+              )}
+              {(item.season || []).length > 0 && (
+                <div className="spec-row">
+                  <span className="spec-label">Saison</span>
+                  <span className="spec-value">{item.season.join(', ')}</span>
+                </div>
+              )}
             </div>
 
-            <div className="row">
-              <button className="btn" onClick={() => setEditing(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <IconEdit size={15} /> Bearbeiten
-              </button>
-              <button className="btn btn-danger" onClick={() => onDelete(item.id)}>Loeschen</button>
-              <button className="btn" onClick={onClose}>Schliessen</button>
+            {item.notes && <p className="card-sub shop-notes">{item.notes}</p>}
+
+            <div className="shop-worn-row">
+              <span className="shop-worn-count">{item.wornCount || 0}× getragen</span>
+              <button className="btn-shop-mini" onClick={logWorn}>+ Heute getragen</button>
+            </div>
+
+            <div className="shop-actions">
+              <button className="btn-shop" onClick={onClose}>Schliessen</button>
+              <div className="shop-actions-row">
+                <button className="btn-text" onClick={() => setEditing(true)}>
+                  <IconEdit size={12} /> Bearbeiten
+                </button>
+                <button className="btn-text btn-text-danger" onClick={() => onDelete(item.id)}>Loeschen</button>
+              </div>
             </div>
           </>
         ) : (
