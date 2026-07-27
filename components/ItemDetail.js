@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { CATEGORIES, FIT_OPTIONS, PATTERN_OPTIONS, SEASON_OPTIONS, COLOR_SWATCHES, categoryLabel, categoryIcon } from '../lib/constants';
 import { IconEdit } from './Icons';
 
-export default function ItemDetail({ item, onClose, onSave, onDelete }) {
+export default function ItemDetail({ item, onClose, onSave, onDelete, onAddToFit }) {
   const [draft, setDraft] = useState({ ...item });
   const [editing, setEditing] = useState(false);
 
@@ -99,11 +99,16 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
             </div>
 
             <div className="shop-actions">
-              <button className="btn-shop" onClick={onClose}>Schliessen</button>
+              {onAddToFit ? (
+                <button className="btn-shop" onClick={() => onAddToFit(item)}>+ Zum heutigen Fit hinzufuegen</button>
+              ) : (
+                <button className="btn-shop" onClick={onClose}>Schliessen</button>
+              )}
               <div className="shop-actions-row">
                 <button className="btn-text" onClick={() => setEditing(true)}>
                   <IconEdit size={12} /> Bearbeiten
                 </button>
+                {onAddToFit && <button className="btn-text" onClick={onClose}>Schliessen</button>}
                 <button className="btn-text btn-text-danger" onClick={() => onDelete(item.id)}>Loeschen</button>
               </div>
             </div>

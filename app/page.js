@@ -4,13 +4,16 @@ import Link from 'next/link';
 import { db } from '../lib/db';
 import ItemCard from '../components/ItemCard';
 import ItemDetail from '../components/ItemDetail';
-import { CATEGORIES, categoryLabel } from '../lib/constants';
+import { categoryLabel } from '../lib/constants';
 import { getCurrentProfileName } from '../lib/profile';
-import { generateOutfit } from '../lib/outfitEngine';
 import { getLiveWeather, calendarSeason } from '../lib/weather';
 import { loadDemoItems } from '../lib/seedData';
 import { useScrollReveal } from '../lib/useReveal';
 import { IconSearch, IconClose, IconSparkle } from '../components/Icons';
+import {
+  loadTodayFit, saveTodayFit, resetTodayFit, slotForCategory,
+  nextOpenSlot, pickedItemsList, suggestionsForSlot,
+} from '../lib/dailyFit';
 
 function greeting() {
   const h = new Date().getHours();
@@ -21,29 +24,23 @@ function greeting() {
 }
 
 const SEASON_LABEL = { winter: 'Winter', fruehling: 'Fruehling', sommer: 'Sommer', herbst: 'Herbst' };
-const SORT_OPTIONS = [
-  { key: 'neueste', label: 'Neueste' },
-  { key: 'meistgetragen', label: 'Meistgetragen' },
-  { key: 'zuletzt', label: 'Zuletzt getragen' },
-  { key: 'favoriten', label: 'Favoriten zuerst' },
-];
 
 export default function ClosetPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
-  const [filterCategory, setFilterCategory] = useState('alle');
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('neueste');
   const [name, setName] = useState('');
   const [weather, setWeather] = useState(null);
-  const [todayOutfit, setTodayOutfit] = useState(null);
   const [seeding, setSeeding] = useState(false);
+  const [fit, setFit] = useState({ date: '', picks: {} });
+  const [rerollNonce, setRerollNonce] = useState(0);
 
   useEffect(() => {
     load();
     setName(getCurrentProfileName());
     getLiveWeather().then(setWeather);
+    setFit(loadTodayFit());
   }, []);
 
   async function load() {
@@ -82,50 +79,56 @@ export default function ClosetPage() {
     setItems((prev) => prev.map((i) => (i.id === patch.id ? patch : i)));
   }
 
-  const recent = useMemo(() => items.slice(0, 10), [items]);
-  const favorites = useMemo(() => items.filter((i) => i.isFavorite), [items]);
-
   const season = weather ? weather.season : calendarSeason();
 
-  useEffect(() => {
-    if (items.length === 0) { setTodayOutfit(null); return; }
-    const seasonMatches = items.filter((i) => !i.season || i.season.length === 0 || i.season.includes(season));
-    const pool = seasonMatches.length ? seasonMatches : items;
-    const seed = pool[Math.floor(Math.random() * pool.length)];
-    setTodayOutfit(generateOutfit(seed, pool));
-    // eslint-disable-next-line
-  }, [items.length, season]);
+  const chosenSoFar = useMemo(() => pickedItemsList(items, fit.picks || {}), [items, fit]);
+  const currentSlot = useMemo(() => nextOpenSlot(items, fit.picks || {}), [items, fit]);
+  const suggestions = useMemo(
+    () => (currentSlot ? suggestionsForSlot(items, currentSlot, fit.picks || {}, chosenSoFar, rerollNonce) : []),
+    [items, currentSlot, fit, chosenSoFar, rerollNonce]
+  );
+  const fitDone = !currentSlot && chosenSoFar.length > 0;
 
-  function rerollToday() {
-    if (items.length === 0) return;
-    const seasonMatches = items.filter((i) => !i.season || i.season.length === 0 || i.season.includes(season));
-    const pool = seasonMatches.length ? seasonMatches : items;
-    const seed = pool[Math.floor(Math.random() * pool.length)];
-    setTodayOutfit(generateOutfit(seed, pool));
+  function updateFit(next) {
+    setFit(next);
+    saveTodayFit(next);
+  }
+
+  function addToFit(item) {
+    const slot = slotForCategory(item.category);
+    setSelected(null);
+    if (!slot) return;
+    updateFit({ ...fit, picks: { ...fit.picks, [slot.key]: item.id } });
+  }
+
+  function skipSlot() {
+    if (!currentSlot) return;
+    updateFit({ ...fit, picks: { ...fit.picks, [currentSlot.key]: 'skip' } });
+  }
+
+  function rerollSlot() {
+    setRerollNonce((n) => n + 1);
+  }
+
+  function restartFit() {
+    setFit(resetTodayFit());
+    setRerollNonce((n) => n + 1);
   }
 
   const filtered = useMemo(() => {
-    let list = filterCategory === 'alle' ? items : items.filter((i) => i.category === filterCategory);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((i) =>
-        (i.subtype || '').toLowerCase().includes(q) ||
-        (i.brand || '').toLowerCase().includes(q) ||
-        (i.colorLabel || '').toLowerCase().includes(q) ||
-        categoryLabel(i.category).toLowerCase().includes(q)
-      );
-    }
-    const sorted = [...list];
-    if (sortBy === 'meistgetragen') sorted.sort((a, b) => (b.wornCount || 0) - (a.wornCount || 0));
-    else if (sortBy === 'zuletzt') sorted.sort((a, b) => (b.lastWornAt || 0) - (a.lastWornAt || 0));
-    else if (sortBy === 'favoriten') sorted.sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
-    else sorted.sort((a, b) => b.createdAt - a.createdAt);
-    return sorted;
-  }, [items, filterCategory, search, sortBy]);
+    if (!search.trim()) return [];
+    const q = search.trim().toLowerCase();
+    return items.filter((i) =>
+      (i.subtype || '').toLowerCase().includes(q) ||
+      (i.brand || '').toLowerCase().includes(q) ||
+      (i.colorLabel || '').toLowerCase().includes(q) ||
+      categoryLabel(i.category).toLowerCase().includes(q)
+    );
+  }, [items, search]);
 
   const searchActive = search.trim().length > 0;
 
-  useScrollReveal([loading, items.length, searchActive]);
+  useScrollReveal([loading, items.length, searchActive, currentSlot && currentSlot.key, fitDone]);
 
   return (
     <div>
@@ -186,99 +189,67 @@ export default function ClosetPage() {
               )}
             </div>
           ) : (
-            <>
-              {todayOutfit && (
-                <div className="section reveal">
-                  <div className="section-title">Outfit fuer heute · {SEASON_LABEL[season]}</div>
-                  <div className="hero-outfit-card">
-                    <img className="hero-outfit-bg" src={todayOutfit.items[0].image} alt="" aria-hidden="true" />
-                    <div className="hero-outfit-scrim" />
-                    <div className="hero-outfit-content">
-                      <div className="outfit-strip hero-outfit-strip">
-                        {todayOutfit.items.map((i) => <img key={i.id} src={i.image} alt={i.subtype || ''} />)}
-                      </div>
-                      <div className="row" style={{ marginTop: 14 }}>
-                        <button className="btn hero-glass-btn" onClick={rerollToday}>🔀 Anderer Vorschlag</button>
-                        <Link href="/outfits" className="btn btn-primary">Zum Kombinieren</Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="section reveal">
+              <div className="section-title-row">
+                <span className="section-title" style={{ marginBottom: 0 }}>
+                  Dein Fit fuer heute{weather ? ` · ${SEASON_LABEL[season]}` : ''}
+                </span>
+              </div>
 
-              <div className="section reveal">
-                <div className="section-title-row">
-                  <span className="section-title" style={{ marginBottom: 0 }}>Zuletzt hinzugefuegt</span>
-                </div>
-                <div className="hscroll">
-                  {recent.map((i) => (
-                    <div key={i.id} className="hscroll-item" onClick={() => setSelected(i)}>
+              {chosenSoFar.length > 0 && (
+                <div className="fit-progress-strip">
+                  {chosenSoFar.map((i) => (
+                    <div key={i.id} className="fit-progress-thumb" onClick={() => setSelected(i)}>
                       <img src={i.image} alt={i.subtype || ''} />
-                      <p className="card-title">{i.subtype || categoryLabel(i.category)}</p>
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {favorites.length > 0 && (
-                <div className="section reveal">
-                  <div className="section-title">Deine Favoriten</div>
-                  <div className="hscroll">
-                    {favorites.map((i) => (
-                      <div key={i.id} className="hscroll-item" onClick={() => setSelected(i)}>
-                        <img src={i.image} alt={i.subtype || ''} />
-                        <p className="card-title">{i.subtype || categoryLabel(i.category)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               )}
 
-              <div className="section reveal">
-                <div className="section-title">Kategorien</div>
-                <div className="cat-tile-grid">
-                  {CATEGORIES.map((c) => (
-                    <button key={c.key} type="button" className="cat-tile"
-                      onClick={() => setFilterCategory(filterCategory === c.key ? 'alle' : c.key)}
-                      style={filterCategory === c.key ? { borderColor: 'var(--ink)' } : undefined}>
-                      <span className="cat-tile-icon">{c.icon}</span>
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="section reveal">
-                <div className="section-title-row">
-                  <span className="section-title" style={{ marginBottom: 0 }}>
-                    {filterCategory === 'alle' ? 'Alles' : categoryLabel(filterCategory)}
-                  </span>
-                  {filterCategory !== 'alle' && <a onClick={() => setFilterCategory('alle')} style={{ cursor: 'pointer' }}>Alle anzeigen</a>}
-                </div>
-
-                <div className="segmented">
-                  {SORT_OPTIONS.map((s) => (
-                    <button key={s.key} type="button" className={sortBy === s.key ? 'active' : ''}
-                      onClick={() => setSortBy(s.key)}>{s.label}</button>
-                  ))}
-                </div>
-
-                {filtered.length === 0 ? (
-                  <p className="card-sub">Keine Treffer.</p>
-                ) : (
+              {currentSlot ? (
+                <>
+                  <p className="fit-slot-label">{currentSlot.label}</p>
                   <div className="grid-2">
-                    {filtered.map((item) => (
+                    {suggestions.map((item) => (
                       <ItemCard key={item.id} item={item} onClick={setSelected} onToggleFavorite={toggleFavorite} />
                     ))}
                   </div>
-                )}
-              </div>
-            </>
+                  <div className="row" style={{ marginTop: 14 }}>
+                    <button className="btn" onClick={rerollSlot}>🔀 Andere Vorschlaege</button>
+                    <button className="btn" onClick={skipSlot}>Ueberspringen</button>
+                  </div>
+                </>
+              ) : fitDone ? (
+                <div className="hero-outfit-card">
+                  <img className="hero-outfit-bg" src={chosenSoFar[0].image} alt="" aria-hidden="true" />
+                  <div className="hero-outfit-scrim" />
+                  <div className="hero-outfit-content">
+                    <p style={{ color: '#fff', fontWeight: 700, marginBottom: 12 }}>Dein Fit steht ✓</p>
+                    <div className="outfit-strip hero-outfit-strip">
+                      {chosenSoFar.map((i) => (
+                        <img key={i.id} src={i.image} alt={i.subtype || ''} onClick={() => setSelected(i)} />
+                      ))}
+                    </div>
+                    <div className="row" style={{ marginTop: 14 }}>
+                      <button className="btn hero-glass-btn" onClick={restartFit}>🔀 Neu mischen</button>
+                      <Link href="/outfits" className="btn btn-primary">Zum Kombinieren</Link>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center' }}>
+                  <p className="card-sub">Alle Kategorien uebersprungen.</p>
+                  <button className="btn" onClick={restartFit} style={{ marginTop: 10 }}>🔀 Neu mischen</button>
+                </div>
+              )}
+            </div>
           )}
         </>
       )}
 
-      {selected && <ItemDetail item={selected} onClose={() => setSelected(null)} onSave={handleSave} onDelete={handleDelete} />}
+      {selected && (
+        <ItemDetail item={selected} onClose={() => setSelected(null)} onSave={handleSave} onDelete={handleDelete} onAddToFit={addToFit} />
+      )}
     </div>
   );
 }
