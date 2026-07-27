@@ -6,7 +6,7 @@ export async function POST(req) {
   try {
     const body = await req.json();
     const apiKey = body.apiKey;
-    const model = body.model || 'gemini-2.5-flash';
+    const model = body.model || 'gemini-3.5-flash';
     const imageBase64 = body.imageBase64;
     const mediaType = body.mediaType || 'image/jpeg';
     if (!apiKey) {

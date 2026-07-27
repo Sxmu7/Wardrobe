@@ -24,7 +24,7 @@ Stelle ein stimmiges Outfit aus 2 bis 5 dieser Teile zusammen (nur existierende 
 }
 
 async function callGemini(prompt, apiKey, model) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-3.5-flash'}:generateContent`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
