@@ -155,6 +155,9 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
   .bottom-nav-fab:hover { transform: scale(1.06) translateY(-2px); box-shadow: var(--shadow-lg), 0 0 0 8px rgba(0,0,0,.03); }
   .bottom-nav-item:hover { color: var(--ink); }
 }
+/* Nav komplett ausblenden, solange ein Bottom-Sheet (Item-Detail, Upload) offen ist,
+   damit Buttons darin nie mit der schwebenden Nav ueberlappen. */
+.app-frame:has(.modal-overlay) .bottom-nav { display: none; }
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -435,6 +438,14 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
 }
 .fit-progress-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .fit-progress-thumb:active { transform: scale(.9); }
+.hero-outfit-name-input {
+  width: 100%; padding: 11px 14px; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,.35);
+  background: rgba(255,255,255,.14); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: #fff; font-family: inherit; font-size: 13.5px; margin-top: 14px;
+}
+.hero-outfit-name-input::placeholder { color: rgba(255,255,255,.65); }
+.hero-outfit-name-input:focus { outline: none; border-color: rgba(255,255,255,.75); }
+.hero-outfit-link { display: block; text-align: center; margin-top: 12px; color: rgba(255,255,255,.85); font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; }
 .hero-glass-btn {
   background: rgba(255,255,255,.2); backdrop-filter: blur(16px) saturate(1.6); -webkit-backdrop-filter: blur(16px) saturate(1.6);
   border-color: rgba(255,255,255,.35); color: #fff;

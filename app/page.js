@@ -35,6 +35,8 @@ export default function ClosetPage() {
   const [seeding, setSeeding] = useState(false);
   const [fit, setFit] = useState({ date: '', picks: {} });
   const [rerollNonce, setRerollNonce] = useState(0);
+  const [fitName, setFitName] = useState('');
+  const [fitSaved, setFitSaved] = useState(false);
 
   useEffect(() => {
     load();
@@ -113,6 +115,22 @@ export default function ClosetPage() {
   function restartFit() {
     setFit(resetTodayFit());
     setRerollNonce((n) => n + 1);
+    setFitName('');
+    setFitSaved(false);
+  }
+
+  async function saveFit() {
+    if (chosenSoFar.length === 0) return;
+    const rec = {
+      id: crypto.randomUUID(),
+      name: fitName.trim() || `Fit vom ${new Date().toLocaleDateString('de-DE')}`,
+      itemIds: chosenSoFar.map((i) => i.id),
+      createdAt: Date.now(),
+    };
+    await db.addOutfit(rec);
+    setFitSaved(true);
+    setFitName('');
+    setTimeout(() => setFitSaved(false), 2200);
   }
 
   const filtered = useMemo(() => {
@@ -230,10 +248,18 @@ export default function ClosetPage() {
                         <img key={i.id} src={i.image} alt={i.subtype || ''} onClick={() => setSelected(i)} />
                       ))}
                     </div>
-                    <div className="row" style={{ marginTop: 14 }}>
+                    <input
+                      type="text"
+                      className="hero-outfit-name-input"
+                      placeholder="Name fuer diesen Fit (optional)"
+                      value={fitName}
+                      onChange={(e) => setFitName(e.target.value)}
+                    />
+                    <div className="row" style={{ marginTop: 12 }}>
                       <button className="btn hero-glass-btn" onClick={restartFit}>🔀 Neu mischen</button>
-                      <Link href="/outfits" className="btn btn-primary">Zum Kombinieren</Link>
+                      <button className="btn btn-primary" onClick={saveFit}>{fitSaved ? 'Gespeichert ✓' : '💾 Fit speichern'}</button>
                     </div>
+                    <Link href="/outfits" className="hero-outfit-link">Zum Kombinieren →</Link>
                   </div>
                 </div>
               ) : (
