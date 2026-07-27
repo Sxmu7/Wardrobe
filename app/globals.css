@@ -90,6 +90,7 @@ body {
 .app-scroll {
   flex: 1; min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
 }
@@ -210,7 +211,7 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
   box-shadow: var(--shadow-sm);
 }
 .search-row .search-icon { color: var(--muted); flex: none; }
-.search-row input { border: none; background: none; padding: 0; font-size: 14.5px; flex: 1; color: var(--ink); }
+.search-row input { border: none; background: none; padding: 0; font-size: 16px; flex: 1; color: var(--ink); }
 .search-row input:focus { outline: none; box-shadow: none; }
 .search-row { transition: background .25s var(--ease-smooth), box-shadow .25s var(--ease-smooth); }
 .search-row:focus-within { background: var(--glass-strong); box-shadow: var(--shadow-md), 0 0 0 3px rgba(0,0,0,.05); }
@@ -360,7 +361,7 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
 .field label { display: block; font-size: 11px; font-weight: 700; margin-bottom: 7px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 .field input[type=text], .field input[type=number], .field input[type=password], .field select, .field textarea {
   width: 100%; padding: 13px 15px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-  font-size: 14.5px; background: var(--card); color: var(--ink); font-family: inherit;
+  font-size: 16px; background: var(--card); color: var(--ink); font-family: inherit;
   transition: border-color .2s var(--ease-smooth), box-shadow .2s var(--ease-smooth);
 }
 .field input:focus, .field select:focus, .field textarea:focus {
@@ -425,7 +426,7 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
 }
 .hero-outfit-scrim { position: absolute; inset: 0; background: linear-gradient(190deg, rgba(0,0,0,.05) 0%, rgba(0,0,0,.6) 100%); }
 .hero-outfit-content { position: relative; z-index: 1; padding: 26px; width: 100%; }
-.hero-outfit-strip { overflow-x: auto; }
+.hero-outfit-strip { overflow-x: visible; flex-wrap: wrap; }
 .hero-outfit-strip img { box-shadow: var(--shadow-md); border: 2.5px solid rgba(255,255,255,.92); }
 
 /* ---------- Fit-fuer-heute Baukasten (Home) ---------- */
@@ -441,7 +442,7 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
 .hero-outfit-name-input {
   width: 100%; padding: 11px 14px; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,.35);
   background: rgba(255,255,255,.14); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  color: #fff; font-family: inherit; font-size: 13.5px; margin-top: 14px;
+  color: #fff; font-family: inherit; font-size: 16px; margin-top: 14px;
 }
 .hero-outfit-name-input::placeholder { color: rgba(255,255,255,.65); }
 .hero-outfit-name-input:focus { outline: none; border-color: rgba(255,255,255,.75); }
@@ -500,7 +501,7 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
 .ai-outfit-row { display: flex; gap: 8px; margin-bottom: var(--sp-3); }
 .ai-occasion-select {
   flex: none; width: auto; border: none; background: var(--border); color: var(--ink);
-  border-radius: var(--radius-pill); padding: 0 14px; font-size: 13px; font-weight: 600; height: 40px;
+  border-radius: var(--radius-pill); padding: 0 14px; font-size: 16px; font-weight: 600; height: 40px;
 }
 .btn-ai-suggest {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
@@ -625,7 +626,7 @@ h1, h2, h3 { letter-spacing: -0.03em; line-height: 1.08; margin: 0; }
 .chat-input-row { display: flex; gap: 8px; align-items: center; padding-top: 12px; flex: none; }
 .chat-input-row input {
   flex: 1; border: 1px solid var(--border); background: var(--card); border-radius: var(--radius-pill);
-  padding: 11px 16px; font-size: 14.5px; color: var(--ink);
+  padding: 11px 16px; font-size: 16px; color: var(--ink);
 }
 .chat-send-btn {
   flex: none; width: 42px; height: 42px; border-radius: 50%; background: var(--ink); color: var(--bg);

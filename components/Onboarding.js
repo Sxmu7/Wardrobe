@@ -23,8 +23,6 @@ function buildScript(lang) {
     { type: 'shot', shot: 'home' },
     { type: 'bot', text: t(lang, 'chatExplainAdd') },
     { type: 'shot', shot: 'add' },
-    { type: 'bot', text: t(lang, 'chatExplainCombine') },
-    { type: 'shot', shot: 'combine' },
     { type: 'bot', text: t(lang, 'chatExplainCommunity') },
     { type: 'shot', shot: 'community' },
     { type: 'bot', text: t(lang, 'chatReady') },

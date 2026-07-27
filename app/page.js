@@ -259,7 +259,6 @@ export default function ClosetPage() {
                       <button className="btn hero-glass-btn" onClick={restartFit}>🔀 Neu mischen</button>
                       <button className="btn btn-primary" onClick={saveFit}>{fitSaved ? 'Gespeichert ✓' : '💾 Fit speichern'}</button>
                     </div>
-                    <Link href="/outfits" className="hero-outfit-link">Zum Kombinieren →</Link>
                   </div>
                 </div>
               ) : (
