@@ -160,10 +160,10 @@ export default function OutfitsPage() {
       </div>
 
       <div className="filter-label"><IconFilter size={14} /> Saison</div>
-      <div className="pill-row">
-        <button type="button" className={'pill' + (season === 'alle' ? ' active' : '')} onClick={() => setSeason('alle')}>Alle</button>
+      <div className="segmented">
+        <button type="button" className={season === 'alle' ? 'active' : ''} onClick={() => setSeason('alle')}>Alle</button>
         {SEASON_OPTIONS.map((s) => (
-          <button key={s} type="button" className={'pill' + (season === s.toLowerCase() ? ' active' : '')}
+          <button key={s} type="button" className={season === s.toLowerCase() ? 'active' : ''}
             onClick={() => setSeason(s.toLowerCase())}>{s}</button>
         ))}
       </div>

@@ -32,6 +32,7 @@ export default function ItemDetail({ item, onClose, onSave, onDelete }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-grabber" />
         {!editing ? (
           <>
             <div className="detail-hero">

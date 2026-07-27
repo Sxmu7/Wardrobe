@@ -121,6 +121,7 @@ export default function GalleryPage() {
       ) : (
         <div className="modal-overlay">
           <div className="modal">
+            <div className="modal-grabber" />
             <h2>Outfit-Foto teilen</h2>
             <img className="preview-img" src={pendingImage} alt="Outfit" />
             <div className="field">

@@ -75,6 +75,58 @@ export function IconSearch({ size = 20, className }) {
   );
 }
 
+export function IconChevronRight({ size = 16, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+export function IconPlus({ size = 22, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function IconMoon({ size = 16, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z" />
+    </svg>
+  );
+}
+
+export function IconDownload({ size = 16, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 4v11" />
+      <path d="M7.5 11.5 12 16l4.5-4.5" />
+      <path d="M5 19h14" />
+    </svg>
+  );
+}
+
+export function IconUpload({ size = 16, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 20V9" />
+      <path d="M7.5 13.5 12 9l4.5 4.5" />
+      <path d="M5 5h14" />
+    </svg>
+  );
+}
+
+export function IconHeart({ size = 16, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 20.5s-7.5-4.6-10-9.3C.4 8 1.8 4.5 5.2 3.8c2-.4 3.9.5 5 2.2 1.1-1.7 3-2.6 5-2.2 3.4.7 4.8 4.2 3.2 7.4-2.5 4.7-10 9.3-10 9.3z" />
+    </svg>
+  );
+}
+
 export function IconCheck({ size = 64, className }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>

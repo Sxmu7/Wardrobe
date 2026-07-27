@@ -212,9 +212,9 @@ export default function ClosetPage() {
                   value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
 
-              <div className="pill-row">
+              <div className="segmented">
                 {SORT_OPTIONS.map((s) => (
-                  <button key={s.key} type="button" className={'pill' + (sortBy === s.key ? ' active' : '')}
+                  <button key={s.key} type="button" className={sortBy === s.key ? 'active' : ''}
                     onClick={() => setSortBy(s.key)}>{s.label}</button>
                 ))}
               </div>

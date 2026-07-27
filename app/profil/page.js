@@ -4,7 +4,7 @@ import { db } from '../../lib/db';
 import { CATEGORIES, categoryLabel } from '../../lib/constants';
 import { getCurrentProfileId, getCurrentProfileName, fetchProfiles, trySyncPendingProfile } from '../../lib/profile';
 import { getStoredTheme, setStoredTheme } from '../../lib/theme';
-import { IconTrash } from '../../components/Icons';
+import { IconTrash, IconMoon, IconDownload, IconUpload, IconChevronRight, IconHeart } from '../../components/Icons';
 
 const MODELS = [
   { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (schnell & guenstig, empfohlen)' },
@@ -142,18 +142,37 @@ export default function ProfilPage() {
         </div>
       </div>
 
-      <div className="toggle-row">
-        <span>Dark Mode</span>
-        <label className="switch">
-          <input type="checkbox" checked={dark} onChange={toggleDark} />
-          <span className="switch-track" />
-          <span className="switch-thumb" />
-        </label>
+      <div className="list-group">
+        <div className="list-row" style={{ cursor: 'default' }}>
+          <span className="list-row-icon" style={{ background: '#111111' }}><IconMoon size={15} /></span>
+          <span className="list-row-label">Dark Mode</span>
+          <label className="switch">
+            <input type="checkbox" checked={dark} onChange={toggleDark} />
+            <span className="switch-track" />
+            <span className="switch-thumb" />
+          </label>
+        </div>
       </div>
 
-      <a href="/papierkorb" className="btn btn-block" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', marginTop: 10 }}>
-        <IconTrash size={16} /> Papierkorb
-      </a>
+      <div className="list-group">
+        <a href="/papierkorb" className="list-row">
+          <span className="list-row-icon" style={{ background: '#FF453A' }}><IconTrash size={15} /></span>
+          <span className="list-row-label">Papierkorb</span>
+          <IconChevronRight size={16} className="list-row-chevron" />
+        </a>
+        <button type="button" className="list-row" onClick={exportBackup}>
+          <span className="list-row-icon" style={{ background: '#0A84FF' }}><IconDownload size={15} /></span>
+          <span className="list-row-label">Backup exportieren</span>
+          <IconChevronRight size={16} className="list-row-chevron" />
+        </button>
+        <button type="button" className="list-row" onClick={() => importInputRef.current?.click()}>
+          <span className="list-row-icon" style={{ background: '#34C759' }}><IconUpload size={15} /></span>
+          <span className="list-row-label">Backup importieren</span>
+          <IconChevronRight size={16} className="list-row-chevron" />
+        </button>
+        <input ref={importInputRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={importBackup} />
+      </div>
+      {backupMsg && <p className="card-sub" style={{ marginTop: -14, marginBottom: 24 }}>{backupMsg}</p>}
 
       <div className="section">
         <div className="section-title">Nach Kategorie</div>
@@ -169,19 +188,6 @@ export default function ProfilPage() {
           </div>
         ))}
         {Object.keys(categoryCounts).length === 0 && <p className="card-sub">Noch keine Teile im Schrank.</p>}
-      </div>
-
-      <div className="section">
-        <div className="section-title">Backup</div>
-        <p className="card-sub" style={{ marginBottom: 10 }}>
-          Deine Kleidungsstuecke liegen nur lokal in diesem Browser. Exportiere regelmaessig ein Backup, damit bei Geraetewechsel oder geloeschten Browserdaten nichts verloren geht.
-        </p>
-        <div className="row">
-          <button className="btn" onClick={exportBackup}>Exportieren</button>
-          <button className="btn" onClick={() => importInputRef.current?.click()}>Importieren</button>
-          <input ref={importInputRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={importBackup} />
-        </div>
-        {backupMsg && <p className="card-sub" style={{ marginTop: 8 }}>{backupMsg}</p>}
       </div>
 
       <div className="section">
@@ -204,15 +210,11 @@ export default function ProfilPage() {
         {saved && <span style={{ marginLeft: 12, color: 'var(--success)' }}>Gespeichert ✓</span>}
       </div>
 
-      <div className="section">
-        <a
-          href="https://www.paypal.com/pool/9relvBFqEb?sr=wccr"
-          target="_blank"
-          rel="noreferrer"
-          className="btn-mono-outline"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
-        >
-          💛 MyClo unterstuetzen (PayPal)
+      <div className="list-group">
+        <a href="https://www.paypal.com/pool/9relvBFqEb?sr=wccr" target="_blank" rel="noreferrer" className="list-row">
+          <span className="list-row-icon" style={{ background: '#FF9F0A' }}><IconHeart size={15} /></span>
+          <span className="list-row-label">MyClo unterstuetzen</span>
+          <IconChevronRight size={16} className="list-row-chevron" />
         </a>
       </div>
 
